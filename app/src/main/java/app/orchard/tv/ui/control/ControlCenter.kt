@@ -1,6 +1,8 @@
 package app.orchard.tv.ui.control
 
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.heightIn
@@ -50,8 +52,10 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -79,12 +83,14 @@ import app.orchard.tv.apps.AppCatalog
 import app.orchard.tv.apps.SourceLooks
 import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.system.BackgroundCleaner
+import app.orchard.tv.system.InstallPolicyHelper
 import app.orchard.tv.system.HomeStatus
 import app.orchard.tv.system.LaunchFallback
 import app.orchard.tv.system.NetKind
 import app.orchard.tv.system.SourceKind
 import app.orchard.tv.system.Sounds
 import app.orchard.tv.system.SystemProbe
+import app.orchard.tv.update.TclSelfUpdate
 import app.orchard.tv.ui.components.Pressable
 import app.orchard.tv.ui.components.consumeTaps
 import app.orchard.tv.ui.components.dismissOnTap
@@ -191,6 +197,7 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
         Row(verticalAlignment = Alignment.Bottom) {
             Column(Modifier.weight(1f)) {
                 BasicText(timeText(now), style = Type.LargeTitle.copy(fontSize = Type.LargeTitle.fontSize * 1.25f))
+                Spacer(Modifier.height(3.dp))
                 BasicText(dateText(now), style = Type.Callout)
             }
             val net = vm.network
@@ -444,6 +451,37 @@ private fun WorkbenchUpdatePage(vm: HomeViewModel, takeFocus: Boolean) {
                 else -> stringResource(R.string.cc_update_install)
             }, onClick = { Updates.install(context) })
         }
+        // Fallback for a failed or unreachable online update: pick the APK off a USB drive and
+        // stream it through the same Root install window as the self-update.
+        val scope = rememberCoroutineScope()
+        var usbBusy by remember { mutableStateOf(false) }
+        val usbPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri == null || usbBusy) return@rememberLauncherForActivityResult
+            usbBusy = true
+            scope.launch {
+                val apk = withContext(Dispatchers.IO) {
+                    runCatching {
+                        val out = java.io.File(context.cacheDir, "update-usb.apk")
+                        context.contentResolver.openInputStream(uri)!!.use { input -> out.outputStream().use { input.copyTo(it) } }
+                        out
+                    }.getOrElse { null }
+                }
+                val done = apk?.let { TclSelfUpdate.install(context, it) } ?: false
+                apk?.delete()
+                usbBusy = false
+                Toast.makeText(context, context.getString(
+                    if (done) R.string.wb_update_usb_done else R.string.wb_update_usb_failed), Toast.LENGTH_SHORT).show()
+            }
+        }
+        MenuRow(Glyph.Usb, stringResource(R.string.wb_update_usb),
+            onClick = {
+                if (usbBusy) return@MenuRow
+                if (!TclSelfUpdate.supported(context)) {
+                    Toast.makeText(context, R.string.wb_update_usb_unsupported, Toast.LENGTH_LONG).show()
+                    return@MenuRow
+                }
+                usbPicker.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream"))
+            })
         val status = when (val state = Updates.install) {
             Updates.Install.Installing -> stringResource(R.string.wb_update_installing)
             Updates.Install.Opened -> stringResource(R.string.cc_update_opened)
@@ -498,6 +536,10 @@ private fun SetupPage(vm: HomeViewModel, takeFocus: Boolean, onOpen: (android.co
         guard?.let { MenuRow(Glyph.Shield, stringResource(R.string.cc_setup_guard), onClick = { vm.whenUnlocked { onOpen(it) } }, trailing = stringResource(R.string.cc_setup_guard_where) + " ›") }
         home?.let { MenuRow(Glyph.Check, stringResource(R.string.cc_setup_home), onClick = { vm.whenUnlocked { onOpen(it) } }, trailing = "›") }
         revival?.let { MenuRow(Glyph.Moon, stringResource(R.string.cc_setup_revival), onClick = { vm.whenUnlocked { onOpen(it) } }, trailing = stringResource(R.string.cc_setup_revival_where) + " ›") }
+        MenuRow(Glyph.Usb, stringResource(R.string.wb_adb_title),
+            onClick = { InstallPolicyHelper.apply(context, !AerialSettings.adbInstallAllowed) },
+            trailing = stringResource(if (AerialSettings.adbInstallAllowed) R.string.wb_adb_on else R.string.wb_adb_off))
+        BasicText(stringResource(R.string.wb_adb_body), style = Type.Caption, modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 14.dp)) {
             Box(Modifier.size(104.dp).clip(RoundedCornerShape(12.dp)).background(Color.White).padding(8.dp)) {
                 qr?.let { Image(it, contentDescription = null, contentScale = ContentScale.Fit, filterQuality = FilterQuality.None, modifier = Modifier.fillMaxSize()) }

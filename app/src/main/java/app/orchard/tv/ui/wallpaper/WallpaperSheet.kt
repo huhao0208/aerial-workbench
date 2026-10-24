@@ -299,6 +299,13 @@ fun WallpaperSheet(
                             AerialSettings.screensaverMinutes, AerialSettings::chooseScreensaverMinutes,
                         )
                         Choices(
+                            R.string.ss_standby, stringResource(R.string.ss_standby_hint), note,
+                            AerialSettings.screensaverStandbyChoices.map {
+                                it to if (it == 0) stringResource(R.string.ss_standby_off) else stringResource(R.string.ss_minutes, it)
+                            },
+                            AerialSettings.screensaverStandbyMinutes, AerialSettings::chooseScreensaverStandbyMinutes,
+                        )
+                        Choices(
                             R.string.ss_back, stringResource(R.string.ss_back_choice_hint), note,
                             listOf(true to R.string.ss_back_on, false to R.string.ss_back_off),
                             AerialSettings.backStartsScreensaver, AerialSettings::chooseBackStartsScreensaver,

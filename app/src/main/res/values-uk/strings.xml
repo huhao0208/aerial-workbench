@@ -260,4 +260,15 @@
     <string name="cc_clean_done">Зупинено застосунків: %1$d</string>
     <string name="cc_clean_none">Поки нічого не обрано</string>
     <string name="cc_clean_failed">Не вдалося зупинити; Root може бути недоступний</string>
+    <string name="ss_standby">Режим очікування після заставки</string>
+    <string name="ss_standby_hint">Переводить ТВ у режим очікування через Root; пульт його будить.</string>
+    <string name="ss_standby_off">Без очікування</string>
+    <string name="wb_adb_title">Дозволити встановлення через adb</string>
+    <string name="wb_adb_on">Дозволено; відновлюється під час завантаження</string>
+    <string name="wb_adb_off">Заводська політика</string>
+    <string name="wb_adb_body">Зберігає відому політику home_adb, щоб adb install працював. Перевірку підписів не вимкнено; хмара виробника може її перевизначити, ТВ повторно застосує вибір під час завантаження.</string>
+    <string name="wb_update_usb">Встановити оновлення з USB</string>
+    <string name="wb_update_usb_done">Оновлення з USB встановлено</string>
+    <string name="wb_update_usb_failed">Не вдалося встановити з USB</string>
+    <string name="wb_update_usb_unsupported">Потрібно увімкнути Root-керування на цьому ТВ</string>
 </resources>

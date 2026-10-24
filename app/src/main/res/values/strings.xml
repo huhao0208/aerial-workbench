@@ -268,4 +268,15 @@
     <string name="cc_clean_done">Stopped %1$d apps</string>
     <string name="cc_clean_none">Nothing chosen to stop yet</string>
     <string name="cc_clean_failed">Stop failed; Root may be unavailable</string>
+    <string name="ss_standby">Standby after screensaver</string>
+    <string name="ss_standby_hint">Root puts the TV in standby; the remote wakes it.</string>
+    <string name="ss_standby_off">No standby</string>
+    <string name="wb_adb_title">Allow adb installs</string>
+    <string name="wb_adb_on">Allowed; reapplied at boot</string>
+    <string name="wb_adb_off">Stock policy</string>
+    <string name="wb_adb_body">Keeps the known home_adb policy of this TV so adb install works. Signature checks stay on; the vendor cloud may override it, and the TV reapplies the choice at boot.</string>
+    <string name="wb_update_usb">Install from USB drive</string>
+    <string name="wb_update_usb_done">USB update installed</string>
+    <string name="wb_update_usb_failed">USB install failed</string>
+    <string name="wb_update_usb_unsupported">Needs the Root controls enabled on this TV</string>
 </resources>

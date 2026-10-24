@@ -136,6 +136,17 @@ object AerialSettings {
     /** Also stop [backgroundCleanPackages] automatically whenever Home returns from an app. */
     var backgroundCleanAuto by mutableStateOf(false); private set
 
+    /**
+     * Minutes after the screensaver starts before Root puts the TV in standby (the remote wakes
+     * it); 0 keeps it off. For owners who leave the aerial films on overnight.
+     */
+    var screensaverStandbyMinutes by mutableStateOf(0); private set
+
+    val screensaverStandbyChoices = listOf(0, 15, 30, 60)
+
+    /** Whether Root keeps the home_adb install policy applied (adb install allowed); boot script reapplies. */
+    var adbInstallAllowed by mutableStateOf(false); private set
+
     fun init(context: Context) {
         if (started) return
         started = true
@@ -162,6 +173,8 @@ object AerialSettings {
         aerialQuality = AerialQuality.of(prefs.getString("aerial_quality", null))
         backgroundCleanPackages = prefs.getStringSet("background_clean_packages", null) ?: emptySet()
         backgroundCleanAuto = prefs.getBoolean("background_clean_auto", false)
+        screensaverStandbyMinutes = prefs.getInt("screensaver_standby_minutes", 0)
+        adbInstallAllowed = prefs.getBoolean("adb_install_allowed", false)
     }
 
     /** Theme and layout are committed together by ThemeStore, then exposed in one UI turn. */
@@ -269,6 +282,17 @@ object AerialSettings {
     fun chooseBackgroundCleanAuto(on: Boolean) {
         backgroundCleanAuto = on
         app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("background_clean_auto", on) }
+    }
+
+    fun chooseScreensaverStandbyMinutes(minutes: Int) {
+        screensaverStandbyMinutes = minutes
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putInt("screensaver_standby_minutes", minutes) }
+    }
+
+    /** Committed by [app.orchard.tv.system.InstallPolicyHelper.apply] after the read-back matched. */
+    fun chooseAdbInstallAllowed(allow: Boolean) {
+        adbInstallAllowed = allow
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("adb_install_allowed", allow) }
     }
 
 

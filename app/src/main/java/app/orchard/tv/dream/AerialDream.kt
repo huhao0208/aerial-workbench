@@ -84,9 +84,13 @@ class AerialDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
     override fun onDreamingStarted() {
         super.onDreamingStarted()
         registry.currentState = Lifecycle.State.RESUMED
+        // The owner's auto-standby counts from the dream: the system starts this dream too, and
+        // every wake path ends it through onDreamingStopped.
+        app.orchard.tv.system.StandbyScheduler.start(this)
     }
 
     override fun onDreamingStopped() {
+        app.orchard.tv.system.StandbyScheduler.stop()
         // Since Android 11 the dream lives in an activity: a key press finishes it, the window is
         // detached first (DESTROYED), and only then is the dream stopped. Moving back to CREATED
         // from there throws and took Aerial down on every wake (TCL MT5879).

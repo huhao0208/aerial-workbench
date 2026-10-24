@@ -260,4 +260,15 @@
     <string name="cc_clean_done">Тоқтатылған қосымшалар: %1$d</string>
     <string name="cc_clean_none">Әзірше ешнәрсе таңдалмаған</string>
     <string name="cc_clean_failed">Тоқтату мүмкін болмады; Root қолжетімсіз болуы мүмкін</string>
+    <string name="ss_standby">Скринсейверден кейін күту режимі</string>
+    <string name="ss_standby_hint">Root ТВ-ны күту режиміне өткізеді; пульт оятады.</string>
+    <string name="ss_standby_off">Күту режимісіз</string>
+    <string name="wb_adb_title">adb орнатуға рұқсат беру</string>
+    <string name="wb_adb_on">Рұқсат етілген; жүктелгенде қайта қолданылады</string>
+    <string name="wb_adb_off">Зауыт саясаты</string>
+    <string name="wb_adb_body">adb install жұмыс істеуі үшін TCL-дің белгілі home_adb саясатын сақтайды. Қолтаңбаны тексеру өшірілмейді; бұлт оны өзгертуі мүмкін, ТВ жүктелгенде таңдауды қайта қолданады.</string>
+    <string name="wb_update_usb">USB жетігінен жаңарту орнату</string>
+    <string name="wb_update_usb_done">USB жаңарту орнатылды</string>
+    <string name="wb_update_usb_failed">USB-дан орнату сәтсіз аяқталды</string>
+    <string name="wb_update_usb_unsupported">Бұл ТВ-да Root басқаруды қосу қажет</string>
 </resources>
