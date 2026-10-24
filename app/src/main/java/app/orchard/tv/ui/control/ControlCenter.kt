@@ -235,12 +235,13 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
         if (app.orchard.tv.system.TclRootBacklight.enabled(context)) {
             Spacer(Modifier.height(8.dp))
             MenuRow(Glyph.Moon, stringResource(R.string.cc_eye_title), onClick = {
+                if (vm.panelSyncing) return@MenuRow
                 if (vm.lowBlueMode == null) {
                     vm.overlay = Overlay.None
                     SystemProbe.openPictureSettings(context)
                 } else vm.toggleLowBlue()
             },
-                trailing = stringResource(when (vm.lowBlueMode) {
+                trailing = if (vm.panelSyncing) stringResource(R.string.cc_picture_reading) else stringResource(when (vm.lowBlueMode) {
                     0 -> R.string.cc_eye_off
                     1 -> R.string.cc_eye_on
                     2 -> R.string.cc_eye_blocked
@@ -491,14 +492,17 @@ private fun SliderRow(
     steps: Int,
     onStep: (Int) -> Unit,
     onClick: () -> Unit,
+    loading: Boolean = false,
 ) {
     // Each step ticks, as focus does; a step past either end bumps instead. Read through state:
     // the drag handler below is made once and outlives this composition's values.
+    val canStep by rememberUpdatedState(!loading)
     val atLevel by rememberUpdatedState(level)
     val doStep by rememberUpdatedState(onStep)
     val step = { by: Int ->
-        if ((by > 0 && atLevel >= 0.999f) || (by < 0 && atLevel <= 0.001f)) Sounds.limit() else Sounds.step()
-        doStep(by)
+        if (!canStep) Unit
+        else if ((by > 0 && atLevel >= 0.999f) || (by < 0 && atLevel <= 0.001f)) Sounds.limit() else Sounds.step()
+        if (canStep) doStep(by)
     }
     val stepCount by rememberUpdatedState(steps.coerceAtLeast(1))
     Pressable(
@@ -538,7 +542,7 @@ private fun SliderRow(
             Canvas(Modifier.weight(1f).height(6.dp)) {
                 val r = CornerRadius(size.height / 2)
                 drawRoundRect(fg.copy(alpha = 0.2f), cornerRadius = r)
-                drawRoundRect(fg, size = Size(size.width * fraction, size.height), cornerRadius = r)
+                if (!loading) drawRoundRect(fg, size = Size(size.width * fraction, size.height), cornerRadius = r)
             }
             BasicText(
                 value,
@@ -570,7 +574,7 @@ private fun VolumeRow(vm: HomeViewModel) {
 private fun BrightnessRow(vm: HomeViewModel) {
     val context = LocalContext.current
     val level = vm.brightness
-    if (level == null) {
+    if (level == null && !vm.panelSyncing) {
         MenuRow(Glyph.Sun, stringResource(R.string.cc_brightness), onClick = {
             vm.overlay = Overlay.None
             SystemProbe.openPictureSettings(context)
@@ -578,8 +582,9 @@ private fun BrightnessRow(vm: HomeViewModel) {
     } else {
         SliderRow(
             glyph = Glyph.Sun,
-            level = level,
-            value = Math.round(level * 100).toString(),
+            level = level ?: 0f,
+            value = if (vm.panelSyncing) stringResource(R.string.cc_picture_reading) else Math.round((level ?: 0f) * 100).toString(),
+            loading = vm.panelSyncing,
             // Brightness.adjust moves 5% a step, and stops at 1%.
             steps = 20,
             onStep = vm::adjustBrightness,

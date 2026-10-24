@@ -239,7 +239,7 @@
     <string name="shortcut_missing">Програма недоступна</string>
     <string name="shortcut_failed">Не вдалося зберегти кнопку. Знову відкрийте персоналізацію.</string>
     <string name="shortcut_hint">Виберіть програму для кнопки покупок. Працює й в інших програмах.</string>
-    <string name="ss_quality_comfort_hint">Авто використовує SDR, зберігаючи яскравість і захист очей. Dolby Vision використовує окремий профіль зображення.</string>
+    <string name="ss_quality_comfort_hint">Керування зображенням TCL Root використовує SDR у заставці, навіть за вибору Dolby Vision, щоб зберегти яскравість і захист очей. 4K доступне.</string>
     <string name="wb_update_title">Оновлення</string>
     <string name="wb_update_check">Перевірити оновлення</string>
     <string name="wb_update_checking">Перевірка оновлень…</string>
@@ -252,4 +252,5 @@
     <string name="wb_update_installing_short">Встановлення…</string>
     <string name="wb_update_install_failed">Встановлення не завершено. Повторіть спробу та перевірте Root-доступ робочого столу.</string>
     <string name="wb_update_download_failed">Помилка завантаження. Перевірте з’єднання та повторіть спробу.</string>
+    <string name="cc_picture_reading">Зчитування…</string>
 </resources>
