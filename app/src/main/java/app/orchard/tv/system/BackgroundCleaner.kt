@@ -26,11 +26,12 @@ object BackgroundCleaner {
     fun targets(packages: Collection<String>, self: String): List<String> =
         packages.filter { it != self && it.matches(Regex("[A-Za-z0-9._]+")) }.distinct().sorted()
 
-    /** The su line stopping exactly those targets, or null when the list has nothing valid. */
+    /** The su line stopping exactly those targets, or null when the list has nothing valid.
+     *  Each stop tolerates its own failure (a package gone since listing); su-level failure still fails. */
     fun command(packages: Collection<String>, self: String): String? {
         val list = targets(packages, self)
         if (list.isEmpty()) return null
-        return list.joinToString("; ") { "am force-stop $it" }
+        return list.joinToString("; ") { "am force-stop $it || true" } + "; true"
     }
 
     /** Stops the configured list now; [onDone] gets the count, 0 for an empty list, -1 when su failed. */
@@ -43,7 +44,7 @@ object BackgroundCleaner {
         }
         scope.launch {
             val exit = runCatching {
-                val child = ProcessBuilder("su", "-c", targets.joinToString("; ") { "am force-stop $it" }).start()
+                val child = ProcessBuilder("su", "-c", command(AerialSettings.backgroundCleanPackages, app.packageName)!!).start()
                 child.outputStream.close()
                 if (child.waitFor(30, TimeUnit.SECONDS)) child.exitValue() else { child.destroy(); -1 }
             }.getOrDefault(-1)

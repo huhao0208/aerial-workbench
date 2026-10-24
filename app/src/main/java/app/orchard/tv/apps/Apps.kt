@@ -14,6 +14,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 
 data class AppEntry(
     val packageName: String,
@@ -137,7 +138,8 @@ object AppCatalog {
     )
 
     private class Cached(val stamp: Long, val width: Int, val label: String, val art: TileArt)
-    private val cache = HashMap<String, Cached>()
+    /** Written on Dispatchers.Default, cleared from the main thread by [trimMemory]: must be concurrent. */
+    private val cache = ConcurrentHashMap<String, Cached>()
 
     /** Drops the decoded tile art; runs with Home hidden behind another app (the disk cache redraws it). */
     fun trimMemory() = cache.clear()

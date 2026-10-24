@@ -66,3 +66,7 @@ The owner's TV is short on RAM, and its video apps outlive their use. wb.17 adds
 Memory: returning-to-Home profiling on the device showed GL textures ≈ 78 MB and the native heap (decoded tile art) ≈ 75 MB of a ≈ 199 MB PSS, with no `onTrimMemory` anywhere. wb.17 clears `AppCatalog`'s decoded tile cache on `TRIM_MEMORY_UI_HIDDEN` (Home hidden behind a full-screen app); the disk cache redraws tiles on return, trading some first-return upload work for the memory of a hidden Home. Wallpaper decoding was already screen-sized and is unchanged.
 
 Device validation of the stop command, the return path and the trim's effect on PSS is pending; this section records the change, not a completed device acceptance.
+
+## wb.18 hardening from a strict self-review
+
+Before anything had installed wb.17, a strict review of the new code found and fixed three flaws: the tile cache was a plain `HashMap` written on Dispatchers.Default and now cleared from the main thread (race; now `ConcurrentHashMap`); the auto stop could fire in the same resume that reopens a bounced page and land right on it (now skipped while a fallback page is pending); and the joined `am force-stop` line reported only the last package's exit (now each stop tolerates its own failure, so only a su-level failure reports failure). The return-to-Home re-decode cost of the trim remains a measured tradeoff pending the device A/B: if Home returns feel slower, the fallback is trimming only the tiles below the visible row.
