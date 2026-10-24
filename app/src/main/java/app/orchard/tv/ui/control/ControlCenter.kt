@@ -232,6 +232,22 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
         Spacer(Modifier.height(8.dp))
         BrightnessRow(vm)
 
+        if (app.orchard.tv.system.TclRootBacklight.enabled(context)) {
+            Spacer(Modifier.height(8.dp))
+            MenuRow(Glyph.Moon, stringResource(R.string.cc_eye_title), onClick = {
+                if (vm.lowBlueMode == null) {
+                    vm.overlay = Overlay.None
+                    SystemProbe.openPictureSettings(context)
+                } else vm.toggleLowBlue()
+            },
+                trailing = stringResource(when (vm.lowBlueMode) {
+                    0 -> R.string.cc_eye_off
+                    1 -> R.string.cc_eye_on
+                    2 -> R.string.cc_eye_blocked
+                    else -> R.string.unavailable
+                }))
+        }
+
         Spacer(Modifier.height(8.dp))
         // How Home looks (wallpaper, screensaver, focus style, hidden apps, weather) lives in one place.
         MenuRow(
@@ -248,12 +264,13 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
                 trailing = "$name ›",
             )
         }
-        Updates.available?.let { latest ->
-            MenuRow(
-                Glyph.Info,
-                stringResource(R.string.cc_update_available, latest),
-                onClick = { vm.overlay = Overlay.ControlCenter(CcPage.Update) },
-            )
+        if (BuildConfig.WORKBENCH) {
+            MenuRow(Glyph.Info, Updates.available?.let { stringResource(R.string.cc_update_available, it) }
+                ?: stringResource(R.string.wb_update_title),
+                onClick = { vm.overlay = Overlay.ControlCenter(CcPage.Update) })
+        } else Updates.available?.let { latest ->
+            MenuRow(Glyph.Info, stringResource(R.string.cc_update_available, latest),
+                onClick = { vm.overlay = Overlay.ControlCenter(CcPage.Update) })
         }
 
         // Installed from the APK alone: how to finish, on the TV or with a computer.
@@ -285,6 +302,7 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
  */
 @Composable
 private fun UpdatePage(vm: HomeViewModel, takeFocus: Boolean) {
+    if (BuildConfig.WORKBENCH) { WorkbenchUpdatePage(vm, takeFocus); return }
     val context = LocalContext.current
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) {
@@ -321,6 +339,7 @@ private fun UpdatePage(vm: HomeViewModel, takeFocus: Boolean) {
         Column(Modifier.padding(horizontal = 14.dp)) {
             Spacer(Modifier.height(10.dp))
             val status = when (val state = Updates.install) {
+                Updates.Install.Installing -> stringResource(R.string.wb_update_installing)
                 Updates.Install.Opened -> stringResource(R.string.cc_update_opened)
                 Updates.Install.NeedsPermission -> stringResource(R.string.cc_update_permission)
                 is Updates.Install.Failed -> stringResource(
@@ -347,6 +366,53 @@ private fun UpdatePage(vm: HomeViewModel, takeFocus: Boolean) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun WorkbenchUpdatePage(vm: HomeViewModel, takeFocus: Boolean) {
+    val context = LocalContext.current
+    val first = remember { FocusRequester() }
+    LaunchedEffect(takeFocus) {
+        Updates.checkIfStale(maxAgeMs = Updates.CONTROL_CENTER_MAX_AGE_MS)
+        if (takeFocus) { withFrameNanos { }; runCatching { first.requestFocus() } }
+    }
+    DisposableEffect(Unit) { onDispose { Updates.resetInstall() } }
+    Column {
+        MenuRow(Glyph.ChevronLeft, stringResource(R.string.wb_update_title),
+            onClick = { vm.overlay = Overlay.ControlCenter(CcPage.Main) })
+        MenuRow(Glyph.Info, stringResource(if (Updates.check == Updates.Check.Checking) R.string.wb_update_checking else R.string.wb_update_check),
+            onClick = { Updates.checkIfStale(force = true) }, focusRequester = first)
+        Updates.available?.let { latest ->
+            BasicText(stringResource(R.string.cc_update_available, latest), style = Type.Body,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
+            MenuRow(Glyph.Download, when (val state = Updates.install) {
+                is Updates.Install.Downloading -> stringResource(R.string.cc_update_downloading, (state.fraction * 100).toInt())
+                Updates.Install.Installing -> stringResource(R.string.wb_update_installing_short)
+                else -> stringResource(R.string.cc_update_install)
+            }, onClick = { Updates.install(context) })
+        }
+        val status = when (val state = Updates.install) {
+            Updates.Install.Installing -> stringResource(R.string.wb_update_installing)
+            Updates.Install.Opened -> stringResource(R.string.cc_update_opened)
+            Updates.Install.NeedsPermission -> stringResource(R.string.cc_update_permission)
+            is Updates.Install.Failed -> stringResource(when (state.reason) {
+                Updates.Failure.Download -> R.string.wb_update_download_failed
+                Updates.Failure.Blocked -> R.string.wb_update_install_failed
+                Updates.Failure.NotOfficial -> R.string.wb_update_signature
+                Updates.Failure.NotNewer -> R.string.cc_update_failed_older
+            })
+            else -> stringResource(when (Updates.check) {
+                Updates.Check.Checking -> R.string.wb_update_checking
+                Updates.Check.Failed -> R.string.wb_update_unreachable
+                Updates.Check.Current -> R.string.wb_update_latest
+                else -> R.string.wb_update_hint
+            })
+        }
+        BasicText(status, style = Type.Caption, modifier = Modifier.padding(14.dp))
+        BasicText("Aerial Workbench ${Updates.current}", style = Type.Caption, modifier = Modifier.padding(horizontal = 14.dp))
+        BasicText(stringResource(R.string.wb_update_channel), style = Type.Caption,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
     }
 }
 

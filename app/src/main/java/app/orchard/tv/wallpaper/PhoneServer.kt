@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.ConnectivityManager
+import app.orchard.tv.BuildConfig
 import android.os.Build
 import android.util.Log
 import androidx.core.content.getSystemService
@@ -11,6 +12,9 @@ import app.orchard.tv.apps.AppCatalog
 import app.orchard.tv.apps.CustomIcons
 import app.orchard.tv.apps.SourceLooks
 import app.orchard.tv.apps.TileArtFactory
+import app.orchard.tv.ui.theme.ThemeStore
+import app.orchard.tv.ui.theme.ThemeDefinition
+import app.orchard.tv.ui.theme.ThemeIssue
 import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.system.Diagnostics
 import app.orchard.tv.system.currentNetwork
@@ -46,12 +50,24 @@ class PhoneServer private constructor(private val context: Context, private val 
     override fun serve(session: IHTTPSession): Response {
         val prefix = "/$token"
         val uri = session.uri
-        if (!uri.startsWith(prefix)) return text(Response.Status.NOT_FOUND, "Not found")
+        if (uri != prefix && !uri.startsWith("$prefix/")) return text(Response.Status.NOT_FOUND, "Not found")
         val path = uri.removePrefix(prefix).ifEmpty { "/" }
         return runCatching {
             when {
                 path == "/" -> newFixedLengthResponse(Response.Status.OK, "text/html; charset=utf-8", page())
+                session.method == Method.GET && path == "/licenses" ->
+                    text(Response.Status.OK, context.assets.open("licenses/THIRD-PARTY-NOTICES.txt").bufferedReader().use { it.readText() })
                 path == "/api/state" -> json(state())
+                session.method == Method.GET && path == "/api/theme/export" -> {
+                    val raw = runBlocking(Dispatchers.Main) { ThemeStore.current.copy(layout = ThemeStore.homeValues()).json().toString(2) }
+                    text(Response.Status.OK, raw).apply {
+                        mimeType = "application/json; charset=utf-8"
+                        addHeader("Content-Disposition", "attachment; filename=Aerial-theme.json")
+                        addHeader("Cache-Control", "no-store")
+                    }
+                }
+                session.method == Method.POST && path == "/api/theme" -> theme(session)
+                session.method == Method.POST && path == "/api/shortcut" -> shortcut(session)
                 path == "/api/diagnostics" -> text(Response.Status.OK, Diagnostics.report(context))
                 path.startsWith("/thumb/") -> thumb(path.removePrefix("/thumb/"))
                 session.method == Method.POST && path == "/api/wallpaper" -> {
@@ -116,6 +132,8 @@ class PhoneServer private constructor(private val context: Context, private val 
             list.put(JSONObject().put("id", w.id).put("kind", w.kind.name.lowercase()).put("title", w.title).put("caption", w.caption ?: ""))
         }
         return JSONObject()
+            .put("theme", runBlocking(Dispatchers.Main) { ThemeStore.state(context) })
+            .put("shortcuts", app.orchard.tv.shortcuts.RemoteShortcut.state(context))
             .put("selected", selected)
             .put("latestDaily", Wallpapers.LATEST_DAILY)
             .put("rotatePhotos", Wallpapers.ROTATE_PHOTOS)
@@ -141,6 +159,64 @@ class PhoneServer private constructor(private val context: Context, private val 
                 Weather.now?.let { put("celsius", it.celsius); put("kind", it.kind.name.lowercase()); put("day", it.day) }
             })
     }
+
+    private fun theme(session: IHTTPSession): Response {
+        val length = session.headers["content-length"]?.toLongOrNull()
+        if (length == null || length !in 1..(ThemeDefinition.MAX_BYTES * 4L))
+            return themeError("file", "theme_invalid", Response.Status.BAD_REQUEST)
+        return try {
+            // Consume the bounded form before rejecting an origin. Closing NanoHTTPD with an
+            // unread request body can reset the socket before the 403 reaches the client.
+            val f = form(session)
+            val origin = session.headers["origin"]
+            if (origin != null && runCatching { java.net.URI(origin).rawAuthority == session.headers["host"] }.getOrDefault(false).not())
+                return text(Response.Status.FORBIDDEN, "Forbidden")
+            val expected = f["revision"]?.toLongOrNull() ?: throw ThemeIssue("revision", "theme_invalid")
+            if (f["action"] == "validate") {
+                val parsed = ThemeDefinition.parse(f["definition"].orEmpty())
+                return json(JSONObject().put("definition", parsed.json())).apply { addHeader("Cache-Control", "no-store") }
+            }
+            onMain {
+                when (f["action"]) {
+                    "select" -> ThemeStore.select(f["id"].orEmpty(), expected)
+                    "save" -> ThemeStore.import(f["definition"].orEmpty(), expected)
+                    "undo" -> ThemeStore.undo(expected)
+                    else -> throw ThemeIssue("action", "theme_invalid")
+                }
+            }
+            json(state()).apply { addHeader("Cache-Control", "no-store") }
+        } catch (e: ThemeIssue) {
+            themeError(e.field, e.code, if (e.code == "theme_stale") Response.Status.CONFLICT else Response.Status.BAD_REQUEST)
+        } catch (_: Exception) {
+            themeError("storage", "theme_storage", Response.Status.INTERNAL_ERROR)
+        }
+    }
+
+    private fun shortcut(session: IHTTPSession): Response {
+        val size = session.headers["content-length"]?.toLongOrNull()
+        if (size == null || size !in 1..4096) return themeError("shortcut", "invalid", Response.Status.BAD_REQUEST)
+        return try {
+            val f = form(session)
+            val origin = session.headers["origin"]
+            if (origin != null && runCatching { java.net.URI(origin).rawAuthority == session.headers["host"] }.getOrDefault(false).not())
+                return text(Response.Status.FORBIDDEN, "Forbidden")
+            if (f.keys.any { it !in setOf("app", "revision") } || !f.containsKey("app"))
+                return themeError("shortcut", "invalid", Response.Status.BAD_REQUEST)
+            val revision = f["revision"]?.toLongOrNull() ?: return themeError("shortcut", "invalid", Response.Status.BAD_REQUEST)
+            app.orchard.tv.shortcuts.RemoteShortcut.select(context, f.getValue("app"), revision)
+            json(state()).apply { addHeader("Cache-Control", "no-store") }
+        } catch (e: app.orchard.tv.shortcuts.ShortcutFailure) {
+            themeError("shortcut", e.reason, when (e.reason) {
+                "stale" -> Response.Status.CONFLICT
+                "storage" -> Response.Status.INTERNAL_ERROR
+                else -> Response.Status.BAD_REQUEST
+            })
+        } catch (_: Exception) { themeError("shortcut", "storage", Response.Status.INTERNAL_ERROR) }
+    }
+
+    private fun themeError(field: String, error: String, status: Response.Status): Response =
+        newFixedLengthResponse(status, "application/json; charset=utf-8", JSONObject().put("error", error).put("field", field).toString())
+            .apply { addHeader("Cache-Control", "no-store") }
 
     /** An app on the TV or a pinned input: the only tiles a picture may be sent for. */
     private fun installed(pkg: String) =
@@ -214,7 +290,7 @@ class PhoneServer private constructor(private val context: Context, private val 
     private fun text(status: Response.Status, msg: String) = newFixedLengthResponse(status, "text/plain; charset=utf-8", msg)
 
     companion object {
-        const val PORT = 8790
+        val PORT = if (BuildConfig.WORKBENCH) 8792 else 8790
         private const val TAG = "AerialPhone"
         /** Enough for a batch of phone photos at full size. */
         private const val MAX_UPLOAD = 200L * 1024 * 1024

@@ -25,6 +25,14 @@ import kotlinx.coroutines.launch
  */
 class ConfigReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        // Explicit local provisioning, separate from accessibility/home guard setup.
+        if (app.orchard.tv.BuildConfig.WORKBENCH && intent.hasExtra("root_tcl_backlight")) {
+            val enabled = intent.getBooleanExtra("root_tcl_backlight", false)
+            val saved = context.getSharedPreferences("backlight", Context.MODE_PRIVATE).edit()
+                .putBoolean("root_tcl", enabled).commit()
+            resultData = if (saved) "root_tcl_backlight=$enabled" else "root_tcl_backlight=save_failed"
+            return
+        }
         // ... --es export_tiles <name>   (every tile on one picture; see TileSheet)
         // Runs on past the broadcast's time limit; Home keeps the process alive. Look for the file.
         intent.getStringExtra("export_tiles")?.takeIf { Regex("^[A-Za-z0-9_-]+$").matches(it) }?.let { name ->

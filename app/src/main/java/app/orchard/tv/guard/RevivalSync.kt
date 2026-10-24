@@ -1,5 +1,6 @@
 package app.orchard.tv.guard
 
+import app.orchard.tv.BuildConfig
 import android.accounts.AbstractAccountAuthenticator
 import android.accounts.Account
 import android.accounts.AccountAuthenticatorResponse
@@ -33,7 +34,7 @@ import android.util.Log
  */
 object RevivalSync {
     const val TAG = "AerialGuard"
-    private const val ACCOUNT_TYPE = "app.orchard.tv"
+    private const val ACCOUNT_TYPE = BuildConfig.APPLICATION_ID
     private const val AUTHORITY = "settings"
 
     fun ensure(context: Context) {

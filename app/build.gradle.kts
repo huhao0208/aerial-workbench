@@ -7,17 +7,23 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val workbench = providers.gradleProperty("workbench").isPresent
+
 android {
     namespace = "app.orchard.tv"
     compileSdk = 36
+    buildToolsVersion = "36.0.0"
 
     defaultConfig {
-        applicationId = "app.orchard.tv"
+        applicationId = if (workbench) "app.hzf.aerial" else "app.orchard.tv"
         // Android 5.0. Compose 1.10 and later need 6.0, so the Compose BOM below stays on 1.9.
         minSdk = 21
         targetSdk = 34
-        versionCode = 44
-        versionName = "1.41"
+        versionCode = if (workbench) 56 else 44
+        versionName = if (workbench) "1.41-wb.12-dev" else "1.41"
+        buildConfigField("boolean", "WORKBENCH", workbench.toString())
+        resValue("string", "revival_account_type", applicationId!!)
+        manifestPlaceholders["launcherLabel"] = if (workbench) "Aerial Workbench" else "@string/app_name"
         // `./gradlew -Pdiag ...`: a build for one reporter's TV whose logcat shows no app lines;
         // see system/DiagLog.kt.
         val diag = project.hasProperty("diag")
@@ -58,7 +64,8 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.findByName("aerial") ?: signingConfigs.getByName("debug")
+            signingConfig = if (providers.gradleProperty("unsignedRelease").isPresent) null
+                else signingConfigs.findByName("aerial") ?: signingConfigs.getByName("debug")
         }
     }
 

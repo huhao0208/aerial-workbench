@@ -3,6 +3,7 @@ package app.orchard.tv.ui.theme
 import android.os.Build
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
@@ -25,10 +26,10 @@ fun canvasDensity(metrics: android.util.DisplayMetrics): Float =
 /** tvOS dark appearance. Values follow Apple's system colors for the dark, elevated context. */
 object Palette {
     val Background = Color(0xFF000000)
-    val Label = Color(0xFFFFFFFF)
-    val SecondaryLabel = Color(0x99EBEBF5)
+    val Label get() = Color(ThemeStore.current.color("text"))
+    val SecondaryLabel get() = Color(ThemeStore.current.color("secondary"))
     val TertiaryLabel = Color(0x4DEBEBF5)
-    val Glass = Color(0xE6202022)
+    val Glass get() = Color(ThemeStore.current.color("glass"))
     val Fill = Color(0x2E787880)
     val FillStrong = Color(0x52787880)
     val Hairline = Color(0x1AFFFFFF)
@@ -37,8 +38,8 @@ object Palette {
     val Red = Color(0xFFFF453A)
 
     /** tvOS draws a focused control as a near-white plate with dark content. */
-    val Focus = Color(0xFFF5F5F7)
-    val OnFocus = Color(0xFF1D1D1F)
+    val Focus get() = Color(ThemeStore.current.color("focus"))
+    val OnFocus get() = Color(ThemeStore.current.color("on_focus"))
 }
 
 object Motion {
@@ -77,32 +78,52 @@ val InterText = inter(14f)
 val InterDisplay = inter(32f)
 
 object Type {
-    val Clock = TextStyle(
+    private val BaseClock = TextStyle(
         fontFamily = InterDisplay, fontWeight = FontWeight.W500,
         fontSize = 104.sp, lineHeight = 104.sp, letterSpacing = (-0.02).em, color = Palette.Label,
     )
-    val LargeTitle = TextStyle(
+    private val BaseLargeTitle = TextStyle(
         fontFamily = InterDisplay, fontWeight = FontWeight.W600,
         fontSize = 26.sp, letterSpacing = (-0.015).em, color = Palette.Label,
     )
-    val Title = TextStyle(
+    private val BaseTitle = TextStyle(
         fontFamily = InterDisplay, fontWeight = FontWeight.W600,
         fontSize = 19.sp, letterSpacing = (-0.01).em, color = Palette.Label,
     )
-    val Headline = TextStyle(
+    private val BaseHeadline = TextStyle(
         fontFamily = InterText, fontWeight = FontWeight.W600,
         fontSize = 15.sp, letterSpacing = (-0.005).em, color = Palette.Label,
     )
-    val Body = TextStyle(
+    private val BaseBody = TextStyle(
         fontFamily = InterText, fontWeight = FontWeight.W500,
         fontSize = 14.sp, color = Palette.Label,
     )
-    val Callout = TextStyle(
+    private val BaseCallout = TextStyle(
         fontFamily = InterText, fontWeight = FontWeight.W500,
         fontSize = 13.sp, color = Palette.SecondaryLabel,
     )
-    val Caption = TextStyle(
+    private val BaseCaption = TextStyle(
         fontFamily = InterText, fontWeight = FontWeight.W500,
         fontSize = 11.sp, letterSpacing = 0.01.em, color = Palette.SecondaryLabel,
     )
+    private data class Styles(val clock: TextStyle, val largeTitle: TextStyle, val title: TextStyle,
+        val headline: TextStyle, val body: TextStyle, val callout: TextStyle, val caption: TextStyle)
+    private val resolved = derivedStateOf {
+        val theme = ThemeStore.current
+        val text = Color(theme.color("text"))
+        val secondary = Color(theme.color("secondary"))
+        Styles(
+            BaseClock.copy(color = Color(theme.color("clock")), fontSize = 104.sp * theme.clockScale, lineHeight = 104.sp * theme.clockScale),
+            BaseLargeTitle.copy(color = text), BaseTitle.copy(color = text), BaseHeadline.copy(color = text),
+            BaseBody.copy(color = text), BaseCallout.copy(color = secondary), BaseCaption.copy(color = secondary),
+        )
+    }
+    val Clock get() = resolved.value.clock
+    val LargeTitle get() = resolved.value.largeTitle
+    val Title get() = resolved.value.title
+    val Headline get() = resolved.value.headline
+    val Body get() = resolved.value.body
+    val Callout get() = resolved.value.callout
+    val Caption get() = resolved.value.caption
+
 }

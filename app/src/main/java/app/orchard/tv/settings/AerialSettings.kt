@@ -1,5 +1,7 @@
 package app.orchard.tv.settings
 
+import android.content.SharedPreferences
+import app.orchard.tv.ui.theme.ThemeStore
 import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -138,12 +140,8 @@ object AerialSettings {
         pinHash = prefs.getString("pin_hash", null)
         pinSet = pinHash != null
         pinArrows = prefs.getBoolean("pin_arrows", false)
-        oneRowHome = prefs.getBoolean("one_row_home", true)
-        peekNextRow = prefs.getBoolean("peek_next_row", true)
-        clockRight = prefs.getBoolean("clock_right", false)
-        largeClock = prefs.getBoolean("large_clock", false)
-        homePlate = prefs.getBoolean("home_plate", true)
-        showAllNames = prefs.getBoolean("show_all_names", false)
+        reloadHomeSettings(prefs)
+        ThemeStore.init(app)
         // Before 1.28 this was on or off; on meant whichever sounds Aerial played.
         uiSounds = UiSounds.of(prefs.getString("ui_sounds_kind", null)) ?: when {
             !prefs.getBoolean("ui_sounds", true) -> UiSounds.Off
@@ -153,6 +151,16 @@ object AerialSettings {
         backStartsScreensaver = prefs.getBoolean("back_starts_screensaver", true)
         screensaverMinutes = prefs.getInt("screensaver_minutes", DEFAULT_SCREENSAVER_MINUTES)
         aerialQuality = AerialQuality.of(prefs.getString("aerial_quality", null))
+    }
+
+    /** Theme and layout are committed together by ThemeStore, then exposed in one UI turn. */
+    internal fun reloadHomeSettings(prefs: SharedPreferences) {
+        oneRowHome = prefs.getBoolean("one_row_home", true)
+        peekNextRow = prefs.getBoolean("peek_next_row", true)
+        clockRight = prefs.getBoolean("clock_right", false)
+        largeClock = prefs.getBoolean("large_clock", false)
+        homePlate = prefs.getBoolean("home_plate", true)
+        showAllNames = prefs.getBoolean("show_all_names", false)
     }
 
     fun chooseBootSource(id: String?) {
@@ -193,13 +201,11 @@ object AerialSettings {
         MessageDigest.getInstance("SHA-256").digest("aerial:$pin".toByteArray()).joinToString("") { "%02x".format(it) }
 
     fun chooseOneRowHome(on: Boolean) {
-        oneRowHome = on
-        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("one_row_home", on) }
+        ThemeStore.chooseHome("one_row_home", on)
     }
 
     fun choosePeekNextRow(on: Boolean) {
-        peekNextRow = on
-        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("peek_next_row", on) }
+        ThemeStore.chooseHome("peek_next_row", on)
     }
 
     fun chooseUiSounds(kind: UiSounds) {
@@ -208,23 +214,19 @@ object AerialSettings {
     }
 
     fun chooseHomePlate(on: Boolean) {
-        homePlate = on
-        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("home_plate", on) }
+        ThemeStore.chooseHome("home_plate", on)
     }
 
     fun chooseClockRight(on: Boolean) {
-        clockRight = on
-        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("clock_right", on) }
+        ThemeStore.chooseHome("clock_right", on)
     }
 
     fun chooseLargeClock(on: Boolean) {
-        largeClock = on
-        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("large_clock", on) }
+        ThemeStore.chooseHome("large_clock", on)
     }
 
     fun chooseShowAllNames(on: Boolean) {
-        showAllNames = on
-        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("show_all_names", on) }
+        ThemeStore.chooseHome("show_all_names", on)
     }
 
     fun chooseBackStartsScreensaver(on: Boolean) {

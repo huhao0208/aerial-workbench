@@ -3,6 +3,7 @@ package app.orchard.tv.guard
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import app.orchard.tv.BuildConfig
 import app.orchard.tv.MainActivity
 
 /**
@@ -14,6 +15,11 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         // Exported for the boot broadcasts only; anything else could use it to pull Aerial forward.
         if (intent.action != Intent.ACTION_BOOT_COMPLETED && intent.action != Intent.ACTION_LOCKED_BOOT_COMPLETED) return
+        // A parallel Workbench installation must not take over the official launcher at boot.
+        if (BuildConfig.WORKBENCH) {
+            val home = context.packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)
+            if (home?.activityInfo?.packageName != context.packageName) return
+        }
         GuardSetup.ensureEnabled(context)
         if (intent.action == Intent.ACTION_LOCKED_BOOT_COMPLETED) return
         // Also when Aerial is the default Home: some firmwares start their own launcher at boot

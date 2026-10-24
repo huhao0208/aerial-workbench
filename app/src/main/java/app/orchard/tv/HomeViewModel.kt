@@ -24,6 +24,7 @@ import app.orchard.tv.apps.folderEntry
 import app.orchard.tv.apps.sourceEntry
 import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.system.Brightness
+import app.orchard.tv.system.TclRootBacklight
 import app.orchard.tv.system.DiagLog
 import app.orchard.tv.system.HomeStatus
 import app.orchard.tv.system.NetworkStatus
@@ -77,6 +78,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Panel brightness 0..1, or null when Aerial cannot change it on this TV. */
     var brightness by mutableStateOf<Float?>(null); private set
+    /** TCL native low-blue-light setting: 0 off, 1 on, 2 blocked by color restoration. */
+    var lowBlueMode by mutableStateOf<Int?>(null); private set
 
     /**
      * Set when Home is pressed: go back to the top row. Done once the window has focus again,
@@ -95,6 +98,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     val screensaverSkips = ScreensaverSkips()
 
     private var loadJob: Job? = null
+    private var brightnessJob: Job? = null
 
     init {
         reload()
@@ -276,7 +280,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             fun shown(list: List<TvSource>) = list.map { Triple(it.id, it.label, it.deviceName) }
             if (shown(s) != shown(sources)) { sources = s; arrange() } else sources = s
             homeStatus = SystemProbe.homeStatus(ctx)
-            brightness = Brightness.level(ctx)
+            val nativeLevel = withContext(Dispatchers.IO) { Brightness.level(ctx) }
+            if (nativeLevel != null || !TclRootBacklight.enabled(ctx)) brightness = nativeLevel
         }
     }
 
@@ -290,9 +295,14 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     fun refreshPanel() {
         viewModelScope.launch {
             val ctx = context
-            val (home, level) = withContext(Dispatchers.Default) { SystemProbe.homeStatus(ctx) to Brightness.level(ctx) }
+            val (home, level, eye) = withContext(Dispatchers.IO) {
+                val native = Brightness.level(ctx)
+                val panel = if (TclRootBacklight.enabled(ctx)) TclRootBacklight.panel(ctx) else null
+                Triple(SystemProbe.homeStatus(ctx), native ?: panel?.brightness, panel?.lowBlue)
+            }
             homeStatus = home
             brightness = level
+            lowBlueMode = eye
         }
     }
 
@@ -304,7 +314,36 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun adjustBrightness(direction: Int) {
-        brightness = Brightness.adjust(context, direction)
+        if (brightnessJob?.isActive == true) return
+        brightnessJob = viewModelScope.launch {
+            val level = withContext(Dispatchers.IO) {
+                if (Brightness.level(context) != null) Brightness.adjust(context, direction)
+                else TclRootBacklight.adjust(context, direction)?.brightness
+            }
+            brightness = level
+            if (level == null) android.widget.Toast.makeText(context, R.string.cc_brightness_failed, android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+
+    fun toggleLowBlue() {
+        val current = lowBlueMode ?: return
+        if (brightnessJob?.isActive == true) return
+        if (current == 2) {
+            android.widget.Toast.makeText(context, R.string.cc_eye_blocked, android.widget.Toast.LENGTH_LONG).show()
+            return
+        }
+        brightnessJob = viewModelScope.launch {
+            val state = TclRootBacklight.setLowBlue(context, current != 1)
+            if (state != null) {
+                brightness = state.brightness; lowBlueMode = state.lowBlue
+            } else android.widget.Toast.makeText(context, R.string.cc_eye_failed, android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+
+    fun releasePanelBrightness() {
+        TclRootBacklight.panelActive(false)
+        brightnessJob?.cancel()
+        viewModelScope.launch { TclRootBacklight.close() }
     }
 
     fun toggleMute() {

@@ -1,0 +1,21 @@
+allprojects { p ->
+    afterEvaluate {
+        if (p.path == ':app') {
+            tasks.register('exportLicenseInputs') {
+                doLast {
+                    def rows = []
+                    ['standardReleaseRuntimeClasspath', 'coreLibraryDesugaring'].each { name ->
+                        p.configurations.getByName(name).resolvedConfiguration.resolvedArtifacts.each { a ->
+                            def id = a.moduleVersion.id
+                            rows << "${id.group}\t${id.name}\t${id.version}\t${a.file.absolutePath}"
+                        }
+                    }
+                    def dest = new File(p.rootProject.projectDir, 'build/license-inputs.tsv')
+                    dest.parentFile.mkdirs()
+                    dest.text = rows.unique().sort().join('\n') + '\n'
+                    println "License inputs: ${rows.unique().size()} artifacts"
+                }
+            }
+        }
+    }
+}

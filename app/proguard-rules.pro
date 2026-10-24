@@ -6,3 +6,6 @@
 # Kept, the reference stays in a class that only API 34+ loads.
 -keep class androidx.activity.OnBackPressedDispatcher$Api34Impl { *; }
 -keep class androidx.activity.OnBackPressedDispatcher$Api33Impl { *; }
+
+# Launched by app_process in the owner's root session, outside Android's manifest.
+-keep class app.orchard.tv.system.TclBacklightHelper { public static void main(java.lang.String[]); }
