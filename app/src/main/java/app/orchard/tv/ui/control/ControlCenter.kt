@@ -229,6 +229,12 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
                 }
             }
             RoundButton(Glyph.Gear, stringResource(R.string.cc_settings)) { vm.whenUnlocked { onOpen(SystemProbe.settingsIntent(context)) } }
+            // Small-RAM TVs: stop chosen background apps from Home, by hand or on the way back.
+            // A fourth round button, not a menu row: MainPage does not scroll, and the row pushed
+            // the update entry and status line off the panel's bottom edge.
+            RoundButton(Glyph.Trash, stringResource(R.string.cc_clean_title)) {
+                vm.overlay = Overlay.ControlCenter(CcPage.BackgroundClean)
+            }
         }
 
         Spacer(Modifier.height(16.dp))
@@ -269,13 +275,6 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
                 trailing = "$name ›",
             )
         }
-        // Small-RAM TVs: stop chosen background apps from Home, by hand or on the way back.
-        MenuRow(
-            Glyph.Trash,
-            stringResource(R.string.cc_clean_title),
-            onClick = { vm.overlay = Overlay.ControlCenter(CcPage.BackgroundClean) },
-            trailing = "›",
-        )
         if (BuildConfig.WORKBENCH) {
             MenuRow(Glyph.Info, Updates.available?.let { stringResource(R.string.cc_update_available, it) }
                 ?: stringResource(R.string.wb_update_title),
