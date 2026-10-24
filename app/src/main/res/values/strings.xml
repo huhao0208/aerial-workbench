@@ -247,7 +247,7 @@
     <string name="shortcut_missing">App is no longer available</string>
     <string name="shortcut_failed">Could not save this key. Reopen Personalize and try again.</string>
     <string name="shortcut_hint">Choose an app for the shopping key. Applies while using any app.</string>
-    <string name="ss_quality_comfort_hint">Auto uses SDR video to keep brightness and eye comfort settings. Dolby Vision uses a separate picture profile.</string>
+    <string name="ss_quality_comfort_hint">TCL Root picture controls keep screensaver video in SDR, including a saved Dolby Vision choice, to preserve brightness and eye comfort. 4K stays available.</string>
     <string name="wb_update_title">Software update</string>
     <string name="wb_update_check">Check for updates</string>
     <string name="wb_update_checking">Checking for updates…</string>

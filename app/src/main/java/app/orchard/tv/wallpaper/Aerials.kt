@@ -68,13 +68,14 @@ object AerialFormats {
     }
 
     // T800T11 switches to its separate Dolby picture profile (backlight 100) when DV starts.
-    // Auto keeps the owner's SDR brightness/low-blue settings on the opted-in rooted TV.
-    // An explicit Dolby choice remains available and is explained beside the quality control.
+    // The opted-in picture controls keep SDR for both Auto and an existing Dolby preference.
+    // Do not enter the separate DV profile and silently replace the owner's picture settings.
     internal fun select(ok: Set<AerialQuality>, chosen: AerialQuality, preferSdr: Boolean): AerialQuality {
-        val automatic = if (preferSdr && chosen == AerialQuality.Auto) listOf(AerialQuality.Uhd)
+        val effective = if (preferSdr && chosen == AerialQuality.DolbyVision) AerialQuality.Uhd else chosen
+        val automatic = if (preferSdr && effective == AerialQuality.Auto) listOf(AerialQuality.Uhd)
             else listOf(AerialQuality.DolbyVision, AerialQuality.Uhd)
-        return if (chosen != AerialQuality.Auto && chosen in ok) chosen
-        else automatic.firstOrNull { it in ok && (chosen == AerialQuality.Auto || it.ordinal < chosen.ordinal) }
+        return if (effective != AerialQuality.Auto && effective in ok) effective
+        else automatic.firstOrNull { it in ok && (effective == AerialQuality.Auto || it.ordinal < effective.ordinal) }
             ?: AerialQuality.Hd
     }
 

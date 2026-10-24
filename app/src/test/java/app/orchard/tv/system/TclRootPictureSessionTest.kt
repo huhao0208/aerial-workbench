@@ -34,7 +34,7 @@ class TclRootPictureSessionTest {
         var starts = 0
         var worker = Thread.currentThread()
         val caller = worker
-        val session = TclRootPictureSession(idleTimeoutMs = 0, startProcess = { starts++; worker = Thread.currentThread(); child })
+        val session = TclRootPictureSession(startProcess = { starts++; worker = Thread.currentThread(); child })
         val state = session.prepare("fixed-shell")
         assertEquals(TclRootBacklight.Panel(.48f, 1), state)
         assertEquals(state, session.prepare("fixed-shell"))
@@ -50,7 +50,7 @@ class TclRootPictureSessionTest {
         lateinit var session: TclRootPictureSession
         val child = Child("WB-BACKLIGHT OK 48 1\nWB-BACKLIGHT OK 60 0\n") { session.panelActive(true) }
         var starts = 0
-        session = TclRootPictureSession(idleTimeoutMs = 0, startProcess = { starts++; child })
+        session = TclRootPictureSession(startProcess = { starts++; child })
         assertEquals(.48f, session.prepare("fixed-shell")!!.brightness)
         assertTrue(child.running)
         assertEquals(TclRootBacklight.Panel(.60f, 0), session.request("fixed-shell", "GET"))
@@ -68,7 +68,7 @@ class TclRootPictureSessionTest {
             Child("WB-BACKLIGHT OK 35 1\n"),
         ))
         val started = mutableListOf<Child>()
-        val session = TclRootPictureSession(idleTimeoutMs = 0, startProcess = { children.removeFirst().also { started += it } })
+        val session = TclRootPictureSession(startProcess = { children.removeFirst().also { started += it } })
         assertEquals(TclRootBacklight.Panel(.20f, 1), session.prepare("fixed-shell"))
         session.panelActive(true)
         assertEquals(TclRootBacklight.Panel(.75f, 0), session.request("fixed-shell", "GET"))
@@ -84,7 +84,7 @@ class TclRootPictureSessionTest {
 
     @Test fun aFailedLiveReadDoesNotReturnAnOldCachedValue() = runBlocking {
         val children = ArrayDeque(listOf(Child("WB-BACKLIGHT OK 20 1\n"), Child("WB-BACKLIGHT ERR\n")))
-        val session = TclRootPictureSession(idleTimeoutMs = 0, startProcess = { children.removeFirst() })
+        val session = TclRootPictureSession(startProcess = { children.removeFirst() })
         assertNotNull(session.prepare("fixed-shell"))
         session.panelActive(true)
         assertNull(session.request("fixed-shell", "GET"))
@@ -94,7 +94,7 @@ class TclRootPictureSessionTest {
 
     @Test fun denialDoesNotLoopOrThrowIntoHome() = runBlocking {
         var starts = 0
-        val session = TclRootPictureSession(idleTimeoutMs = 0, startProcess = { starts++; throw IOException("denied") })
+        val session = TclRootPictureSession(startProcess = { starts++; throw IOException("denied") })
         assertNull(session.prepare("fixed-shell"))
         assertNull(session.prepare("fixed-shell"))
         session.panelActive(true)
@@ -107,7 +107,6 @@ class TclRootPictureSessionTest {
         var starts = 0
         val child = Child("")
         val session = TclRootPictureSession(
-            idleTimeoutMs = 0,
             startProcess = { starts++; child },
             now = { elapsed.also { elapsed += 5_000 } },
         )
@@ -119,40 +118,49 @@ class TclRootPictureSessionTest {
         assertEquals(listOf("GET", "EXIT"), child.commands())
     }
 
-    @Test fun idleGraceReusesOneRootProcessAcrossMenuReopens() = runBlocking {
+    @Test fun foregroundKeepsOneConnectionAcrossMenuReopensWithoutPolling() = runBlocking {
         val child = Child("WB-BACKLIGHT OK 40 1\nWB-BACKLIGHT OK 55 0\n")
         var starts = 0
-        val session = TclRootPictureSession(startProcess = { starts++; child }, idleTimeoutMs = 80)
+        val session = TclRootPictureSession(startProcess = { starts++; child })
+        session.foregroundActive(true)
         session.prepare("fixed-shell")
+        session.close()
+        kotlinx.coroutines.delay(100)
         assertTrue(child.running)
+        assertEquals(listOf("GET"), child.commands())
         session.panelActive(true)
-        kotlinx.coroutines.delay(110)
-        assertTrue("An active menu must cancel idle expiry", child.running)
         assertEquals(TclRootBacklight.Panel(.55f, 0), session.request("fixed-shell", "GET"))
         session.panelActive(false)
         session.close()
         assertTrue(child.running)
-        session.panelActive(true)
-        assertTrue(child.running)
-        session.panelActive(false)
-        session.close(immediate = true)
+        session.foregroundActive(false)
+        session.close()
         assertEquals(1, starts)
         assertFalse(child.running)
+        assertEquals(listOf("GET", "GET", "EXIT"), child.commands())
     }
 
-    @Test fun unusedWarmConnectionExpiresWithoutPolling() = runBlocking {
-        val child = Child("WB-BACKLIGHT OK 40 1\n")
-        val session = TclRootPictureSession(startProcess = { child }, idleTimeoutMs = 40)
+    @Test fun returningHomePreparesANewConnectionBeforeTheMenu() = runBlocking {
+        val first = Child("WB-BACKLIGHT OK 40 1\n")
+        val second = Child("WB-BACKLIGHT OK 75 0\n")
+        val children = ArrayDeque(listOf(first, second))
+        val session = TclRootPictureSession(startProcess = { children.removeFirst() })
+        session.foregroundActive(true)
         session.prepare("fixed-shell")
-        assertTrue(child.running)
-        kotlinx.coroutines.delay(100)
-        assertFalse(child.running)
-        assertEquals(listOf("GET", "EXIT"), child.commands())
+        session.foregroundActive(false)
+        session.close()
+        assertFalse(first.running)
+        session.foregroundActive(true)
+        assertEquals(TclRootBacklight.Panel(.75f, 0), session.prepare("fixed-shell"))
+        assertTrue(second.running)
+        session.foregroundActive(false)
+        session.close()
+        assertFalse(second.running)
     }
 
     @Test fun cancellationCleansUpBeforeItPropagates() = runBlocking {
         val child = Child("") { throw CancellationException("Home destroyed") }
-        val session = TclRootPictureSession(idleTimeoutMs = 0, startProcess = { child })
+        val session = TclRootPictureSession(startProcess = { child })
         try {
             session.prepare("fixed-shell")
             fail("Cancellation must propagate")

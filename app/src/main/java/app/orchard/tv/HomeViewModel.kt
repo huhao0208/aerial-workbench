@@ -388,8 +388,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         panelRefreshJob = null
         TclRootBacklight.panelActive(false)
         brightnessJob?.cancel()
-        val immediate = !resumed
-        viewModelScope.launch { TclRootBacklight.close(immediate) }
+        if (!resumed) rootPreparationRequested = false
+        viewModelScope.launch { TclRootBacklight.close() }
     }
 
     fun toggleMute() {

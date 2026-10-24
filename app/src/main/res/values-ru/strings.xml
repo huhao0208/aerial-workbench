@@ -239,7 +239,7 @@
     <string name="shortcut_missing">Приложение недоступно</string>
     <string name="shortcut_failed">Не удалось сохранить кнопку. Откройте персонализацию заново.</string>
     <string name="shortcut_hint">Выберите приложение для кнопки покупок. Работает и в других приложениях.</string>
-    <string name="ss_quality_comfort_hint">Авто использует SDR, сохраняя яркость и защиту глаз. Dolby Vision использует отдельный профиль изображения.</string>
+    <string name="ss_quality_comfort_hint">Управление изображением TCL Root использует SDR в заставке, даже при выборе Dolby Vision, чтобы сохранить яркость и защиту глаз. 4K доступно.</string>
     <string name="wb_update_title">Обновление</string>
     <string name="wb_update_check">Проверить обновления</string>
     <string name="wb_update_checking">Проверка обновлений…</string>

@@ -43,12 +43,11 @@ public final class TclBacklightHelper {
             Object lowBlue = enumValue(effect, "EN_PQ_EFFECT_LOW_BLUE_RAY");
             Object restoration = enumValue(effect, "EN_PQ_EFFECT_PQ_ENGINE_CAM");
             BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
+            // Initialization is bounded above. Once ready, block on the owner's pipe without
+            // polling; EOF on client death and explicit EXIT both end the privileged process.
+            expiry.cancel();
+            idle.cancel();
             while (true) {
-                expiry.cancel();
-                expiry = new TimerTask() { @Override public void run() { System.exit(0); } };
-                // Client releases after 60 idle seconds; this is the crash/EOF fallback.
-                idle.schedule(expiry, 70_000);
-                idle.purge();
                 // All callers are local and root-authorized; still bound every protocol line.
                 StringBuilder line = new StringBuilder();
                 int ch;

@@ -239,7 +239,7 @@
     <string name="shortcut_missing">Қолданба қолжетімсіз</string>
     <string name="shortcut_failed">Пернені сақтау мүмкін болмады. Даралауды қайта ашыңыз.</string>
     <string name="shortcut_hint">Сатып алу пернесіне қолданба таңдаңыз. Басқа қолданбаларда да жұмыс істейді.</string>
-    <string name="ss_quality_comfort_hint">Авто жарықтық пен көзді қорғау баптауларын сақтау үшін SDR қолданады. Dolby Vision бөлек кескін профилін қолданады.</string>
+    <string name="ss_quality_comfort_hint">TCL Root кескін басқаруы жарықтық пен көзді қорғау параметрлерін сақтау үшін Dolby Vision таңдалса да, экран сақтағышта SDR қолданады. 4K қолжетімді.</string>
     <string name="wb_update_title">Жаңарту</string>
     <string name="wb_update_check">Жаңартуды тексеру</string>
     <string name="wb_update_checking">Жаңарту тексерілуде…</string>

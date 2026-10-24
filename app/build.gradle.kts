@@ -19,8 +19,8 @@ android {
         // Android 5.0. Compose 1.10 and later need 6.0, so the Compose BOM below stays on 1.9.
         minSdk = 21
         targetSdk = 34
-        versionCode = if (workbench) 58 else 44
-        versionName = if (workbench) "1.41-wb.14" else "1.41"
+        versionCode = if (workbench) 59 else 44
+        versionName = if (workbench) "1.41-wb.15" else "1.41"
         buildConfigField("boolean", "WORKBENCH", workbench.toString())
         resValue("string", "revival_account_type", applicationId!!)
         manifestPlaceholders["launcherLabel"] = if (workbench) "Aerial Workbench" else "@string/app_name"

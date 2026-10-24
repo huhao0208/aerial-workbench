@@ -6,10 +6,6 @@ import android.os.SystemClock
 import app.orchard.tv.BuildConfig
 import java.io.BufferedReader
 import java.io.BufferedWriter
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
@@ -25,9 +21,10 @@ object TclRootBacklight {
         context.getSharedPreferences("backlight", Context.MODE_PRIVATE).getBoolean("root_tcl", false)
 
     fun panelActive(value: Boolean) = session.panelActive(value)
-    suspend fun close(immediate: Boolean = false) = session.close(immediate)
+    fun foregroundActive(value: Boolean) = session.foregroundActive(value)
+    suspend fun close() = session.close()
 
-    /** One read-only authorization/read attempt per app process, including when the panel is closed. */
+    /** Prepare a read-only connection after Home resumes, including when the panel is closed. */
     suspend fun prepare(context: Context): Panel? =
         if (enabled(context)) session.prepare(shell(context)) else null
 
@@ -56,11 +53,9 @@ internal class TclRootPictureSession(
         ProcessBuilder("su", "-c", shell).redirectErrorStream(true).start()
     },
     private val now: () -> Long = SystemClock::elapsedRealtime,
-    private val idleTimeoutMs: Long = 60_000,
 ) {
     private val lock = Mutex()
-    private val idleScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    @Volatile private var idleRelease: Job? = null
+    @Volatile private var foreground = false
     @Volatile private var active = false
     private var process: Process? = null
     private var reader: BufferedReader? = null
@@ -71,18 +66,19 @@ internal class TclRootPictureSession(
 
     fun panelActive(value: Boolean) {
         active = value
-        if (value) { idleRelease?.cancel(); idleRelease = null }
     }
+
+    fun foregroundActive(value: Boolean) { foreground = value }
 
     suspend fun prepare(shell: String): TclRootBacklight.Panel? = withContext(Dispatchers.IO) {
         lock.withLock {
-            if (startupAttempted) return@withLock lastPanel
+            if (startupAttempted && (process?.isAlive == true || !foreground)) return@withLock lastPanel
             startupAttempted = true
             try {
                 exchangeLocked(shell, "GET", preparing = true)
             } finally {
-                // A bounded idle grace keeps the next menu read warm, without a polling loop.
-                if (!active) releaseAfterIdleLocked()
+                // Keep a blocking pipe while Home is foreground; no idle polling or expiry.
+                if (!active && !foreground) closeLocked()
             }
         }
     }
@@ -92,29 +88,13 @@ internal class TclRootPictureSession(
         lock.withLock { exchangeLocked(shell, command, preparing = false) }
     }
 
-    suspend fun close(immediate: Boolean = false) = withContext(Dispatchers.IO) {
+    suspend fun close() = withContext(Dispatchers.IO) {
         lock.withLock {
-            if (!active) {
-                if (immediate) closeLocked() else releaseAfterIdleLocked()
-            }
-        }
-    }
-
-    private fun releaseAfterIdleLocked() {
-        idleRelease?.cancel()
-        idleRelease = null
-        if (process?.isAlive != true || idleTimeoutMs <= 0) { closeLocked(); return }
-        idleRelease = idleScope.launch {
-            delay(idleTimeoutMs)
-            lock.withLock {
-                if (!active) { idleRelease = null; closeLocked() }
-            }
+            if (!active && !foreground) closeLocked()
         }
     }
 
     private fun closeLocked() {
-        idleRelease?.cancel()
-        idleRelease = null
         runCatching { writer?.apply { write("EXIT\n"); flush(); close() } }
         runCatching { reader?.close() }
         process?.destroy()

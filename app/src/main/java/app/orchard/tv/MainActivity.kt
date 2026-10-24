@@ -493,6 +493,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         vm.resumed = true
+        app.orchard.tv.system.TclRootBacklight.foregroundActive(true)
         if (firstHomeFrameDrawn) vm.prepareRootControls()
         if (vm.overlay is Overlay.ControlCenter) {
             app.orchard.tv.system.TclRootBacklight.panelActive(true)
@@ -516,6 +517,7 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         vm.resumed = false
+        app.orchard.tv.system.TclRootBacklight.foregroundActive(false)
         // Also release when Home backgrounds with its menu already closed.
         vm.releasePanelBrightness()
         DiagLog.i("onPause")
