@@ -1,0 +1,49 @@
+name: Workbench source and unsigned APK
+on:
+  push:
+    branches: [workbench, 'feat/**', 'fix/**']
+  pull_request:
+    branches: [workbench]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd
+        with:
+          cmdline-tools-version: '12266719'
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: SDK
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Verify runtime license bundle against resolved artifacts
+        run: |
+          ./gradlew --no-daemon --no-configuration-cache -I tools/license-inputs.gradle -Pworkbench :app:exportLicenseInputs
+          python3 tools/license-bundle.py --check
+      - name: Test and assemble unsigned release candidates
+        run: ./gradlew --no-daemon -Pworkbench -PunsignedRelease :app:testStandardDebugUnitTest :app:assembleStandardRelease :app:assembleGuardRelease :keybridge:assembleRelease
+      - name: Check packaged notices and unsigned identity
+        run: python3 tools/check-apk-notices.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: workbench-unsigned-candidates
+          path: |
+            app/build/outputs/apk/standard/release/*unsigned.apk
+            app/build/outputs/apk/guard/release/*unsigned.apk
+            keybridge/build/outputs/apk/release/*unsigned.apk
+            NOTICE.md
+            LICENSE
+            FONT-LICENSE-OFL.txt
+            licenses/
+          if-no-files-found: error

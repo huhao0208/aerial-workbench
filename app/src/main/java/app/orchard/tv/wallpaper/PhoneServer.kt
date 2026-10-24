@@ -55,6 +55,8 @@ class PhoneServer private constructor(private val context: Context, private val 
         return runCatching {
             when {
                 path == "/" -> newFixedLengthResponse(Response.Status.OK, "text/html; charset=utf-8", page())
+                session.method == Method.GET && path == "/licenses" ->
+                    text(Response.Status.OK, context.assets.open("licenses/THIRD-PARTY-NOTICES.txt").bufferedReader().use { it.readText() })
                 path == "/api/state" -> json(state())
                 session.method == Method.GET && path == "/api/theme/export" -> {
                     val raw = runBlocking(Dispatchers.Main) { ThemeStore.current.copy(layout = ThemeStore.homeValues()).json().toString(2) }

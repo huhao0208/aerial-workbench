@@ -1,3 +1,5 @@
+> **Aerial Workbench fork:** see [the maintained fork README](README.md) and [third-party notices](NOTICE.md). The text below is the retained upstream documentation.
+
 <div align="center">
 
 <img src="docs/brand/icon.png" width="96" alt="Aerial icon">

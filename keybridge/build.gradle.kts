@@ -10,8 +10,8 @@ android {
         applicationId = "com.tcl.tshop"
         minSdk = 21
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1-dev"
     }
     val props = rootProject.file("local/signing.properties")
     signingConfigs {
@@ -28,7 +28,8 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
-            signingConfig = signingConfigs.findByName("workbench") ?: signingConfigs.getByName("debug")
+            signingConfig = if (providers.gradleProperty("unsignedRelease").isPresent) null
+                else signingConfigs.findByName("workbench") ?: signingConfigs.getByName("debug")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
         }
     }

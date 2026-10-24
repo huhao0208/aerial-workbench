@@ -16,3 +16,8 @@ site/install.sh
 
 # Wrangler state and the account cache (account id, e-mail).
 .wrangler/
+
+# Candidate build output remains untracked.
+*.apk
+*.keystore
+*.jks
