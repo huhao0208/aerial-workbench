@@ -261,4 +261,11 @@
     <string name="wb_update_install_failed">Installation did not finish. Retry; if it still fails, check Root access for the desktop.</string>
     <string name="wb_update_download_failed">Download failed. Check the connection and try again.</string>
     <string name="cc_picture_reading">Reading…</string>
+    <string name="cc_clean_title">Background apps</string>
+    <string name="cc_clean_body">Stop chosen background apps with Root to free memory. Off while the list is empty; apps are not uninstalled.</string>
+    <string name="cc_clean_now">Stop now</string>
+    <string name="cc_clean_auto">Stop them when Home returns</string>
+    <string name="cc_clean_done">Stopped %1$d apps</string>
+    <string name="cc_clean_none">Nothing chosen to stop yet</string>
+    <string name="cc_clean_failed">Stop failed; Root may be unavailable</string>
 </resources>

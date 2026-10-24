@@ -139,6 +139,9 @@ object AppCatalog {
     private class Cached(val stamp: Long, val width: Int, val label: String, val art: TileArt)
     private val cache = HashMap<String, Cached>()
 
+    /** Drops the decoded tile art; runs with Home hidden behind another app (the disk cache redraws it). */
+    fun trimMemory() = cache.clear()
+
     /** The apps of the last load, for the phone page. */
     @Volatile var loaded: List<AppEntry> = emptyList(); private set
 
