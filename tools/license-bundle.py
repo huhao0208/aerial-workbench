@@ -46,7 +46,7 @@ def pom_licenses(cache, group, name, version, seen=None):
     return pom_licenses(cache, *[parent.findtext('m:'+key, namespaces=NS) for key in ['groupId','artifactId','version']], seen)
 
 def generate(inputs):
-    entries, notices = [], []
+    entries, notices, texts = [], [], {}
     for row in inputs.read_text().splitlines():
         group, name, version, filename = row.split('\t')
         path = Path(filename)
@@ -54,14 +54,20 @@ def generate(inputs):
         coordinate = ':'.join([group, name, version])
         entries.append({'coordinate': coordinate, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
                         'licenses': pom_licenses(cache, group, name, version)})
-        notices += ['\n## '+coordinate+' / '+key+'\n\n'+value for key, value in archive_notices(path).items()]
+        for key, value in archive_notices(path).items():
+            identifier = hashlib.sha256(value.encode()).hexdigest()
+            texts[identifier] = value
+            notices.append(coordinate+' / '+key+' -> notice-'+identifier+'\n')
     metadata = json.dumps(entries, ensure_ascii=False, indent=2)+'\n'
     body = (ROOT/'NOTICE.md').read_text()+'\n\n# Full license texts\n'
     for name in ['LICENSE', 'FONT-LICENSE-OFL.txt']:
         body += '\n## '+name+'\n\n'+(ROOT/name).read_text()
     for path in sorted((ROOT/'licenses').glob('*.txt')):
         body += '\n## '+path.name+'\n\n'+path.read_text()
-    body += '\n\n# Runtime artifact metadata\n\n'+metadata+'\n# Embedded dependency notices\n'+''.join(notices)
+    body += '\n\n# Runtime artifact metadata\n\n'+metadata+'\n# Embedded dependency notice index\n'+''.join(notices)
+    body += '\n# Embedded dependency notice texts (identical texts shared)\n'
+    body += ''.join('\n## notice-'+key+'\n\n'+value for key, value in sorted(texts.items()))
+    body = '\n'.join(line.rstrip() for line in body.splitlines()).rstrip()+'\n'
     return metadata, body
 
 def main():
