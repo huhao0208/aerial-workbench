@@ -260,4 +260,15 @@
     <string name="cc_clean_done">Остановлено приложений: %1$d</string>
     <string name="cc_clean_none">Пока ничего не выбрано</string>
     <string name="cc_clean_failed">Не удалось остановить; Root может быть недоступен</string>
+    <string name="ss_standby">Режим ожидания после заставки</string>
+    <string name="ss_standby_hint">Переводит ТВ в режим ожидания через Root; пульт его пробуждает.</string>
+    <string name="ss_standby_off">Без ожидания</string>
+    <string name="wb_adb_title">Разрешить установку через adb</string>
+    <string name="wb_adb_on">Разрешено; восстанавливается при загрузке</string>
+    <string name="wb_adb_off">Заводская политика</string>
+    <string name="wb_adb_body">Сохраняет известную политику home_adb, чтобы adb install работал. Проверка подписей не отключается; облачное управление может её переопределить, ТВ повторно применит выбор при загрузке.</string>
+    <string name="wb_update_usb">Установить обновление с USB</string>
+    <string name="wb_update_usb_done">Обновление с USB установлено</string>
+    <string name="wb_update_usb_failed">Не удалось установить с USB</string>
+    <string name="wb_update_usb_unsupported">Требуется включить Root-управление на этом ТВ</string>
 </resources>

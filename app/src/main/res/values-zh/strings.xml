@@ -267,4 +267,15 @@
     <string name="cc_clean_done">已清理 %1$d 个应用</string>
     <string name="cc_clean_none">还没有选择要清理的应用</string>
     <string name="cc_clean_failed">清理失败,Root 可能不可用</string>
+    <string name="ss_standby">屏保后自动待机</string>
+    <string name="ss_standby_hint">用 Root 让电视进入待机,遥控器可唤醒。</string>
+    <string name="ss_standby_off">不待机</string>
+    <string name="wb_adb_title">允许 ADB 安装应用</string>
+    <string name="wb_adb_on">已放开,开机自动保持</string>
+    <string name="wb_adb_off">原厂策略</string>
+    <string name="wb_adb_body">保持 TCL 已知的 home_adb 策略使 adb install 可用;签名校验不关闭,厂商云控可能覆盖,电视会在开机时重新应用此选择。</string>
+    <string name="wb_update_usb">从 U 盘安装更新</string>
+    <string name="wb_update_usb_done">U 盘更新已安装</string>
+    <string name="wb_update_usb_failed">U 盘安装失败</string>
+    <string name="wb_update_usb_unsupported">需要先在本机启用 Root 图像控制</string>
 </resources>

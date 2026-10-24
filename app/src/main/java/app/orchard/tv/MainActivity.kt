@@ -347,6 +347,7 @@ class MainActivity : ComponentActivity() {
     private val showScreensaver = Runnable {
         DiagLog.i("screensaver starts (${Wallpapers.screensaver})")
         vm.screensaverVisible = true
+        app.orchard.tv.system.StandbyScheduler.start(this)
         // Holding the screen on keeps the firmware's screensaver from starting over ours. After a
         // long stretch, let go so the TV's own power policy can still turn the panel off.
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -387,6 +388,7 @@ class MainActivity : ComponentActivity() {
     private fun hideScreensaver() {
         if (vm.screensaverVisible) DiagLog.i("screensaver ends")
         vm.screensaverVisible = false
+        app.orchard.tv.system.StandbyScheduler.stop()
         idleHandler.removeCallbacks(releaseScreen)
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
