@@ -6,6 +6,10 @@ import android.os.SystemClock
 import app.orchard.tv.BuildConfig
 import java.io.BufferedReader
 import java.io.BufferedWriter
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
@@ -21,7 +25,7 @@ object TclRootBacklight {
         context.getSharedPreferences("backlight", Context.MODE_PRIVATE).getBoolean("root_tcl", false)
 
     fun panelActive(value: Boolean) = session.panelActive(value)
-    suspend fun close() = session.close()
+    suspend fun close(immediate: Boolean = false) = session.close(immediate)
 
     /** One read-only authorization/read attempt per app process, including when the panel is closed. */
     suspend fun prepare(context: Context): Panel? =
@@ -52,8 +56,11 @@ internal class TclRootPictureSession(
         ProcessBuilder("su", "-c", shell).redirectErrorStream(true).start()
     },
     private val now: () -> Long = SystemClock::elapsedRealtime,
+    private val idleTimeoutMs: Long = 60_000,
 ) {
     private val lock = Mutex()
+    private val idleScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Volatile private var idleRelease: Job? = null
     @Volatile private var active = false
     private var process: Process? = null
     private var reader: BufferedReader? = null
@@ -62,7 +69,10 @@ internal class TclRootPictureSession(
     private var startupAttempted = false
     private var lastPanel: TclRootBacklight.Panel? = null
 
-    fun panelActive(value: Boolean) { active = value }
+    fun panelActive(value: Boolean) {
+        active = value
+        if (value) { idleRelease?.cancel(); idleRelease = null }
+    }
 
     suspend fun prepare(shell: String): TclRootBacklight.Panel? = withContext(Dispatchers.IO) {
         lock.withLock {
@@ -71,9 +81,8 @@ internal class TclRootPictureSession(
             try {
                 exchangeLocked(shell, "GET", preparing = true)
             } finally {
-                // Reuse the helper if the user opened the panel during authorization. Otherwise
-                // release it immediately; preparation must not add an idle root process.
-                if (!active) closeLocked()
+                // A bounded idle grace keeps the next menu read warm, without a polling loop.
+                if (!active) releaseAfterIdleLocked()
             }
         }
     }
@@ -83,9 +92,29 @@ internal class TclRootPictureSession(
         lock.withLock { exchangeLocked(shell, command, preparing = false) }
     }
 
-    suspend fun close() = withContext(Dispatchers.IO) { lock.withLock { if (!active) closeLocked() } }
+    suspend fun close(immediate: Boolean = false) = withContext(Dispatchers.IO) {
+        lock.withLock {
+            if (!active) {
+                if (immediate) closeLocked() else releaseAfterIdleLocked()
+            }
+        }
+    }
+
+    private fun releaseAfterIdleLocked() {
+        idleRelease?.cancel()
+        idleRelease = null
+        if (process?.isAlive != true || idleTimeoutMs <= 0) { closeLocked(); return }
+        idleRelease = idleScope.launch {
+            delay(idleTimeoutMs)
+            lock.withLock {
+                if (!active) { idleRelease = null; closeLocked() }
+            }
+        }
+    }
 
     private fun closeLocked() {
+        idleRelease?.cancel()
+        idleRelease = null
         runCatching { writer?.apply { write("EXIT\n"); flush(); close() } }
         runCatching { reader?.close() }
         process?.destroy()

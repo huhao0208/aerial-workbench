@@ -252,4 +252,5 @@
     <string name="wb_update_installing_short">Встановлення…</string>
     <string name="wb_update_install_failed">Встановлення не завершено. Повторіть спробу та перевірте Root-доступ робочого столу.</string>
     <string name="wb_update_download_failed">Помилка завантаження. Перевірте з’єднання та повторіть спробу.</string>
+    <string name="cc_picture_reading">Зчитування…</string>
 </resources>

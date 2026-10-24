@@ -259,4 +259,5 @@
     <string name="wb_update_installing_short">正在安装…</string>
     <string name="wb_update_install_failed">安装未完成。请重试；若仍失败，请检查桌面的 Root 权限。</string>
     <string name="wb_update_download_failed">下载失败，请检查网络后重试。</string>
+    <string name="cc_picture_reading">正在读取…</string>
 </resources>

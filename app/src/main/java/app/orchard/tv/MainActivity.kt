@@ -175,7 +175,7 @@ class MainActivity : ComponentActivity() {
                 snapshotFlow { vm.overlay is Overlay.ControlCenter }.collectLatest { open ->
                     app.orchard.tv.system.TclRootBacklight.panelActive(open)
                     try {
-                        if (open) vm.refreshPanel()
+                        if (open) vm.panelOpened()
                         while (open) {
                             delay(PANEL_REFRESH_MS)
                             vm.refreshPanel()
@@ -494,6 +494,10 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         vm.resumed = true
         if (firstHomeFrameDrawn) vm.prepareRootControls()
+        if (vm.overlay is Overlay.ControlCenter) {
+            app.orchard.tv.system.TclRootBacklight.panelActive(true)
+            vm.panelOpened()
+        }
         DiagLog.i("onResume; screensaver after ${idleBeforeScreensaver() / 1000} s")
         restartIdleTimer()
         GuardSetup.setHomeInFront(this, true)
@@ -512,6 +516,8 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         vm.resumed = false
+        // Also release when Home backgrounds with its menu already closed.
+        vm.releasePanelBrightness()
         DiagLog.i("onPause")
         GuardSetup.setHomeInFront(this, false)
         idleHandler.removeCallbacks(showScreensaver)

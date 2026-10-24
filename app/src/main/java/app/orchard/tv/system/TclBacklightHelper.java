@@ -46,7 +46,8 @@ public final class TclBacklightHelper {
             while (true) {
                 expiry.cancel();
                 expiry = new TimerTask() { @Override public void run() { System.exit(0); } };
-                idle.schedule(expiry, 12_000);
+                // Client releases after 60 idle seconds; this is the crash/EOF fallback.
+                idle.schedule(expiry, 70_000);
                 idle.purge();
                 // All callers are local and root-authorized; still bound every protocol line.
                 StringBuilder line = new StringBuilder();

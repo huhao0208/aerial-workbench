@@ -252,4 +252,5 @@
     <string name="wb_update_installing_short">Орнатылуда…</string>
     <string name="wb_update_install_failed">Орнату аяқталмады. Қайталап көріңіз және жұмыс үстелінің Root рұқсатын тексеріңіз.</string>
     <string name="wb_update_download_failed">Жүктеу орындалмады. Желіні тексеріп, қайталап көріңіз.</string>
+    <string name="cc_picture_reading">Оқылуда…</string>
 </resources>

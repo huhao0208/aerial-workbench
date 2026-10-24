@@ -80,6 +80,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     var brightness by mutableStateOf<Float?>(null); private set
     /** TCL native low-blue-light setting: 0 off, 1 on, 2 blocked by color restoration. */
     var lowBlueMode by mutableStateOf<Int?>(null); private set
+    var panelSyncing by mutableStateOf(false); private set
 
     /**
      * Set when Home is pressed: go back to the top row. Done once the window has focus again,
@@ -316,9 +317,17 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
      * The volume and the network have broadcasts of their own (refreshSystem, refreshNetwork), and the
      * input list is not rebuilt here. Assigning equal values redraws nothing.
      */
+    fun panelOpened() {
+        panelRevision++
+        panelSyncing = TclRootBacklight.enabled(context)
+        if (panelSyncing) DiagLog.i("picture menu sync started")
+        refreshPanel()
+    }
+
     fun refreshPanel() {
         if (panelRefreshJob?.isActive == true || brightnessJob?.isActive == true) return
         val revision = panelRevision
+        val started = SystemClock.elapsedRealtime()
         panelRefreshJob = viewModelScope.launch {
             val ctx = context
             val (home, level, eye) = withContext(Dispatchers.IO) {
@@ -327,6 +336,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 Triple(SystemProbe.homeStatus(ctx), native ?: panel?.brightness, panel?.lowBlue)
             }
             if (revision != panelRevision || overlay !is Overlay.ControlCenter || brightnessJob?.isActive == true) return@launch
+            if (panelSyncing) DiagLog.i("picture menu sync ${if (level != null) "ready" else "unavailable"} in ${SystemClock.elapsedRealtime() - started} ms")
+            panelSyncing = false
             homeStatus = home
             brightness = level
             lowBlueMode = eye
@@ -341,7 +352,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun adjustBrightness(direction: Int) {
-        if (brightnessJob?.isActive == true) return
+        if (panelSyncing || brightnessJob?.isActive == true) return
         panelRevision++
         brightnessJob = viewModelScope.launch {
             val level = withContext(Dispatchers.IO) {
@@ -354,6 +365,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun toggleLowBlue() {
+        if (panelSyncing) return
         val current = lowBlueMode ?: return
         if (brightnessJob?.isActive == true) return
         if (current == 2) {
@@ -370,12 +382,14 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun releasePanelBrightness() {
+        panelSyncing = false
         panelRevision++
         panelRefreshJob?.cancel()
         panelRefreshJob = null
         TclRootBacklight.panelActive(false)
         brightnessJob?.cancel()
-        viewModelScope.launch { TclRootBacklight.close() }
+        val immediate = !resumed
+        viewModelScope.launch { TclRootBacklight.close(immediate) }
     }
 
     fun toggleMute() {

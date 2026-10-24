@@ -252,4 +252,5 @@
     <string name="wb_update_installing_short">Установка…</string>
     <string name="wb_update_install_failed">Установка не завершена. Повторите попытку и проверьте Root-доступ рабочего стола.</string>
     <string name="wb_update_download_failed">Ошибка загрузки. Проверьте соединение и повторите попытку.</string>
+    <string name="cc_picture_reading">Чтение…</string>
 </resources>
