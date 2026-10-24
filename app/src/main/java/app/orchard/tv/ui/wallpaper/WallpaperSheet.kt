@@ -73,6 +73,8 @@ import app.orchard.tv.ui.theme.GlyphIcon
 import app.orchard.tv.ui.theme.Motion
 import app.orchard.tv.ui.theme.Palette
 import app.orchard.tv.ui.theme.Type
+import app.orchard.tv.ui.theme.ThemeStore
+import android.widget.Toast
 import app.orchard.tv.wallpaper.PhoneServer
 import app.orchard.tv.wallpaper.AerialFormats
 import app.orchard.tv.wallpaper.AerialQuality
@@ -105,6 +107,12 @@ fun WallpaperSheet(
     val context = LocalContext.current
     var phoneUrl by remember { mutableStateOf<String?>(null) }
     var qr by remember { mutableStateOf<ImageBitmap?>(null) }
+    var keyPicker by remember { mutableStateOf(false) }
+    var keyVersion by remember { mutableStateOf(0) }
+    if (visible && keyPicker) RemoteKeyPicker {
+        keyPicker = false
+        keyVersion++
+    }
 
     BackHandler(enabled = visible, onBack = onDismiss)
 
@@ -116,6 +124,7 @@ fun WallpaperSheet(
             phoneUrl = url
             qr = url?.let { withContext(Dispatchers.Default) { PhoneServer.qr(it).asImageBitmap() } }
         } else {
+            keyPicker = false
             delay(5 * 60 * 1000L)
             withContext(Dispatchers.IO) { PhoneServer.stop() }
         }
@@ -151,6 +160,40 @@ fun WallpaperSheet(
                 Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(scroll)) {
                     BasicText(stringResource(R.string.wp_title), style = Type.LargeTitle)
                     Spacer(Modifier.height(16.dp))
+                    val firstTheme = remember { FocusRequester() }
+                    LaunchedEffect(Unit) {
+                        withFrameNanos { }
+                        runCatching { firstTheme.requestFocus() }
+                    }
+                    SectionTitle(R.string.theme_title)
+                    Group(stringResource(R.string.theme_hint)) { note ->
+                        val options: List<Pair<String, Any>> = ThemeStore.presets.map { it.id to it.title } +
+                            if (ThemeStore.custom != null) listOf("custom" to R.string.theme_custom) else emptyList()
+                        Choices(R.string.theme_style, stringResource(R.string.theme_hint), note,
+                            options, ThemeStore.activeId, { id ->
+                                runCatching { ThemeStore.select(id) }.onFailure {
+                                    Toast.makeText(context, R.string.theme_failed, Toast.LENGTH_LONG).show()
+                                }
+                            }, first = true, initialFocus = firstTheme)
+                        if (ThemeStore.canUndo) SettingRow(R.string.theme_undo, stringResource(R.string.theme_undo_hint), note) {
+                            ActionChip(stringResource(R.string.theme_undo), Glyph.ChevronLeft) {
+                                runCatching { ThemeStore.undo() }.onFailure {
+                                    Toast.makeText(context, R.string.theme_failed, Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    if (app.orchard.tv.BuildConfig.WORKBENCH) {
+                        SectionTitle(R.string.shortcut_title)
+                        Group(stringResource(R.string.shortcut_hint)) { note ->
+                            SettingRow(R.string.shortcut_shopping, stringResource(R.string.shortcut_hint), note) {
+                                val label = remember(keyVersion, app.orchard.tv.shortcuts.RemoteShortcut.version) { app.orchard.tv.shortcuts.RemoteShortcut.label(context) }
+                                ActionChip(label, Glyph.ChevronRight) { keyPicker = true }
+                            }
+                        }
+                        Spacer(Modifier.height(6.dp))
+                    }
                     SectionTitle(R.string.wp_wallpaper)
                     WallpaperRows()
 
@@ -241,7 +284,7 @@ fun WallpaperSheet(
                         val qualities = remember { AerialFormats.supported(context) }
                         if (qualities.size > 1) {
                             Choices(
-                                R.string.ss_quality, stringResource(R.string.ss_quality_hint), note,
+                                R.string.ss_quality, stringResource(if (app.orchard.tv.system.TclRootBacklight.enabled(context)) R.string.ss_quality_comfort_hint else R.string.ss_quality_hint), note,
                                 listOf(AerialQuality.Auto to R.string.ss_quality_auto, AerialQuality.Hd to R.string.ss_quality_hd) +
                                     listOf(AerialQuality.Uhd to R.string.ss_quality_uhd, AerialQuality.DolbyVision to R.string.ss_quality_dv)
                                         .filter { it.first in qualities },
@@ -296,10 +339,6 @@ private fun WallpaperRows() {
     val items = Wallpapers.items
     val selected = Wallpapers.selectedId
     val first = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
-        withFrameNanos { }
-        runCatching { first.requestFocus() }
-    }
     val dailyTitle = stringResource(R.string.wp_daily_latest)
     val rotateTitle = stringResource(R.string.wp_photos_rotate)
     val list = remember(items, selected, dailyTitle, rotateTitle) {
@@ -450,11 +489,13 @@ private fun <T> Choices(
     current: T,
     choose: (T) -> Unit,
     first: Boolean = false,
+    initialFocus: FocusRequester? = null,
 ) {
     SettingRow(label, hint, note, first) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            options.forEach { (value, text) ->
-                Chip(if (text is Int) stringResource(text) else text.toString(), on = current == value) { choose(value) }
+            options.forEachIndexed { index, (value, text) ->
+                Chip(if (text is Int) stringResource(text) else text.toString(), on = current == value,
+                    focusRequester = initialFocus.takeIf { index == 0 }) { choose(value) }
             }
         }
     }
@@ -499,8 +540,8 @@ private fun WeatherValue() {
 
 /** A pill to pick one of a few options: a check on the chosen one, white when focused. */
 @Composable
-private fun Chip(label: String, on: Boolean, onFocused: (() -> Unit)? = null, onClick: () -> Unit) {
-    Pressable(onClick = onClick, focusedScale = 1.06f) { state ->
+private fun Chip(label: String, on: Boolean, onFocused: (() -> Unit)? = null, focusRequester: FocusRequester? = null, onClick: () -> Unit) {
+    Pressable(onClick = onClick, focusedScale = 1.06f, focusRequester = focusRequester) { state ->
         if (onFocused != null) LaunchedEffect(state.focused) { if (state.focused) onFocused() }
         val bg by animateColorAsState(
             when {

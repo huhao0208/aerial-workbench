@@ -170,9 +170,15 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 snapshotFlow { vm.overlay is Overlay.ControlCenter }.collectLatest { open ->
-                    while (open) {
-                        delay(PANEL_REFRESH_MS)
-                        vm.refreshPanel()
+                    app.orchard.tv.system.TclRootBacklight.panelActive(open)
+                    try {
+                        if (open) vm.refreshPanel()
+                        while (open) {
+                            delay(PANEL_REFRESH_MS)
+                            vm.refreshPanel()
+                        }
+                    } finally {
+                        vm.releasePanelBrightness()
                     }
                 }
             }

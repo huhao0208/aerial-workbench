@@ -8,6 +8,7 @@ import android.os.Build
 import android.view.Display
 import android.view.WindowManager
 import androidx.core.content.getSystemService
+import app.orchard.tv.system.TclRootBacklight
 import org.json.JSONObject
 import java.util.Locale
 
@@ -63,9 +64,17 @@ object AerialFormats {
 
     /** [chosen], or for Auto the best supported; a choice the TV cannot play falls back too. */
     fun resolve(context: Context, chosen: AerialQuality): AerialQuality {
-        val ok = supported(context)
+        return select(supported(context), chosen, TclRootBacklight.enabled(context))
+    }
+
+    // T800T11 switches to its separate Dolby picture profile (backlight 100) when DV starts.
+    // Auto keeps the owner's SDR brightness/low-blue settings on the opted-in rooted TV.
+    // An explicit Dolby choice remains available and is explained beside the quality control.
+    internal fun select(ok: Set<AerialQuality>, chosen: AerialQuality, preferSdr: Boolean): AerialQuality {
+        val automatic = if (preferSdr && chosen == AerialQuality.Auto) listOf(AerialQuality.Uhd)
+            else listOf(AerialQuality.DolbyVision, AerialQuality.Uhd)
         return if (chosen != AerialQuality.Auto && chosen in ok) chosen
-        else listOf(AerialQuality.DolbyVision, AerialQuality.Uhd).firstOrNull { it in ok && (chosen == AerialQuality.Auto || it.ordinal < chosen.ordinal) }
+        else automatic.firstOrNull { it in ok && (chosen == AerialQuality.Auto || it.ordinal < chosen.ordinal) }
             ?: AerialQuality.Hd
     }
 

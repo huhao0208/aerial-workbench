@@ -105,6 +105,42 @@
   .row .upload.plain { background: var(--fill); color: var(--tint); text-decoration: none; }
   .link { appearance: none; border: 0; background: none; color: var(--tint); font: inherit; font-size: 13px; padding: 0; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  * { scrollbar-color: var(--secondary) var(--bg); scrollbar-width: auto; }
+  *::-webkit-scrollbar { width: 12px; height: 12px; }
+  *::-webkit-scrollbar-track { background: var(--bg); }
+  *::-webkit-scrollbar-thumb { background: var(--secondary); border: 3px solid var(--bg); border-radius: 8px; }
+  html { scrollbar-gutter: stable; }
+  button, a.upload, label.upload { cursor: pointer; }
+  button:disabled { cursor: default; opacity: .55; }
+  :focus-visible { outline: 3px solid var(--tint); outline-offset: 3px; }
+  button:hover:not(:disabled) { filter: brightness(.95); }
+  textarea, .resize-none { resize: none; }
+  .theme-form { padding: 18px; }
+  .theme-form label { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 15px; min-height: 48px; }
+  .theme-form label span { overflow-wrap: anywhere; }
+  .theme-form input[type=text] { min-width: 0; width: 55%; background: var(--fill); color: var(--label); border: 1px solid var(--sep); padding: 11px; border-radius: 10px; font: inherit; }
+  .theme-colors { display: grid; grid-template-columns: 1fr 1fr; column-gap: 24px; }
+  .theme-form input[type=color] { width: 48px; height: 38px; border: 0; padding: 2px; background: var(--fill); border-radius: 8px; cursor: pointer; }
+  .theme-form select {max-width:55%;min-width:0;background:var(--fill);color:var(--label);font:inherit;padding:10px;border:1px solid var(--sep);border-radius:10px;}
+  .theme-form input[type=range] { width: 112px; accent-color: var(--tint); }
+  .theme-form input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--tint); }
+  .theme-preview { padding: 20px; margin: 12px 0; border-radius: 16px; min-height: 162px; overflow: hidden; }
+  .theme-preview strong { display: block; font-size: 40px; line-height: 1.1; letter-spacing: -.03em; }
+  .theme-preview p { font-size: 14px; }
+  .theme-preview .sample { display: inline-block; border-radius: 10px; padding: 8px 18px; }
+  .theme-status { min-height: 64px; padding: 10px 4px; margin: 0; font-size: 14px; color: var(--secondary); overflow-wrap: anywhere; }
+  .theme-status.error { color: var(--danger); }
+  #themePresets { grid-template-columns: repeat(auto-fit, minmax(85px, 1fr)); }
+  .theme-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .theme-actions button, .theme-actions a { flex: 1 1 180px; }
+  #themeFile { max-width: 100%; margin-top: 12px; min-height: 40px; font: inherit; }
+  dialog { color: var(--label); background: var(--card); border: 1px solid var(--sep); border-radius: 22px; padding: 24px; width: min(92vw, 430px); }
+  dialog::backdrop { background: rgba(0,0,0,.5); }
+  dialog p { margin-top: 0; overflow-wrap: anywhere; }
+  dialog input { width: 100%; padding: 10px; font: inherit; color: var(--label); background: var(--bg); border: 1px solid var(--sep); border-radius: 10px; }
+  @media (max-width: 390px) { .theme-colors { grid-template-columns: 1fr; } .theme-form { padding: 14px; } }
+  @media (forced-colors: active) { :focus-visible { outline-color: Highlight; } input, button { border: 1px solid ButtonText; } }
 </style>
 </head>
 <body>
@@ -114,24 +150,53 @@
   <select class="lang" id="lang" data-i18n-aria-label="language"></select>
 </header>
 
+<section id="themes" aria-labelledby="themeHeading">
+<h2 id="themeHeading" data-i18n="theme_title"></h2>
+<div class="segmented" id="themePresets" role="group" data-i18n-aria-label="theme_title"></div>
+<p class="hint" data-i18n="theme_hint"></p>
+<p id="themeStatus" class="theme-status" role="status" aria-live="polite" data-i18n="theme_wait"></p>
+<form id="themeForm" class="group theme-form" novalidate>
+<label for="themeName"><span data-i18n="theme_name"></span><input id="themeName" type="text" maxlength="32" required aria-describedby="themeStatus"></label>
+<div class="theme-preview" id="themePreview" aria-hidden="true"><strong id="themePreviewClock">20:24</strong><p id="themePreviewText" data-i18n="theme_preview_body"></p><span class="sample" id="themePreviewFocus" data-i18n="theme_preview"></span></div>
+<div class="theme-colors"><label><span data-i18n="theme_focus"></span><input id="theme-focus" data-color="focus" type="color" aria-describedby="themeStatus"></label><label><span data-i18n="theme_on_focus"></span><input id="theme-on_focus" data-color="on_focus" type="color" aria-describedby="themeStatus"></label><label><span data-i18n="theme_text"></span><input id="theme-text" data-color="text" type="color" aria-describedby="themeStatus"></label><label><span data-i18n="theme_secondary"></span><input id="theme-secondary" data-color="secondary" type="color" aria-describedby="themeStatus"></label><label><span data-i18n="theme_glass"></span><input id="theme-glass" data-color="glass" type="color" aria-describedby="themeStatus"></label><label><span data-i18n="theme_app_focus"></span><input id="theme-app_focus" data-color="app_focus" type="color" aria-describedby="themeStatus"></label><label><span data-i18n="theme_clock"></span><input id="theme-clock" data-color="clock" type="color" aria-describedby="themeStatus"></label></div>
+<label><span data-i18n="theme_clock_scale"></span><span><input id="themeClockScale" type="range" min="85" max="100" value="100" aria-describedby="themeStatus"><output id="themeClockValue">100%</output></span></label>
+<label><span data-i18n="theme_roundness"></span><span><input id="themeRoundness" type="range" min="75" max="115" value="100" aria-describedby="themeStatus"><output id="themeRoundValue">100%</output></span></label>
+<h2 data-i18n="theme_layout"></h2><div class="theme-colors"><label><span data-i18n="theme_one_row"></span><input type="checkbox" data-layout="one_row_home"></label><label><span data-i18n="theme_peek"></span><input type="checkbox" data-layout="peek_next_row"></label><label><span data-i18n="theme_plate"></span><input type="checkbox" data-layout="home_plate"></label><label><span data-i18n="theme_names"></span><input type="checkbox" data-layout="show_all_names"></label><label><span data-i18n="theme_right"></span><input type="checkbox" data-layout="clock_right"></label><label><span data-i18n="theme_large"></span><input type="checkbox" data-layout="large_clock"></label></div>
+<button id="themeSave" class="upload" type="submit" data-i18n="theme_apply"></button>
+</form>
+<div class="theme-actions"><button type="button" class="upload plain" id="themeUndo" data-i18n="theme_undo" disabled></button><a class="upload plain" id="themeExport" download="Aerial-theme.json" data-i18n="theme_export"></a><button type="button" class="upload plain" id="themeReload" onclick="loadCurrentTheme()" data-i18n="theme_reload"></button></div>
+<label for="themeFile" class="hint" data-i18n="theme_choose_file"></label><input id="themeFile" type="file" accept=".json,application/json">
+</section>
+
+<section id="remoteKeys" aria-labelledby="shortcutHeading">
+<h2 id="shortcutHeading" data-i18n="shortcut_title"></h2>
+<p class="hint" data-i18n="shortcut_hint"></p>
+<form id="shortcutForm" class="group theme-form">
+<label for="shortcutApp"><span data-i18n="shortcut_shopping"></span><select id="shortcutApp" aria-describedby="shortcutStatus"></select></label>
+<button type="submit" id="shortcutSave" class="upload" data-i18n="shortcut_save"></button>
+</form>
+<p id="shortcutStatus" class="theme-status" role="status" aria-live="polite"></p>
+<button type="button" id="shortcutReload" class="upload plain" data-i18n="shortcut_reload"></button>
+</section>
+
 <h2 data-i18n="screensaver"></h2>
 <div class="segmented" id="ss" role="group" data-i18n-aria-label="screensaver_short">
-  <button data-mode="aerial" data-i18n="ss_aerial"></button>
-  <button data-mode="photos" data-i18n="ss_photos"></button>
-  <button data-mode="clock" data-i18n="ss_clock"></button>
+  <button onclick="chooseScreensaver(this.dataset.mode)" data-mode="aerial" data-i18n="ss_aerial"></button>
+  <button onclick="chooseScreensaver(this.dataset.mode)" data-mode="photos" data-i18n="ss_photos"></button>
+  <button onclick="chooseScreensaver(this.dataset.mode)" data-mode="clock" data-i18n="ss_clock"></button>
 </div>
 <p class="hint" id="ssHint"></p>
 
 <h2 data-i18n="focus"></h2>
 <div class="segmented two" id="focus" role="group" data-i18n-aria-label="focus">
-  <button data-style="high_contrast" data-i18n="focus_high"></button>
-  <button data-style="standard" data-i18n="focus_standard"></button>
+  <button onclick="chooseFocus(this.dataset.style)" data-style="high_contrast" data-i18n="focus_high"></button>
+  <button onclick="chooseFocus(this.dataset.style)" data-style="standard" data-i18n="focus_standard"></button>
 </div>
 <p class="hint" id="focusHint"></p>
 
 <h2 data-i18n="weather"></h2>
 <div class="group wx"><b id="wxNow">—</b><span id="wxPlace"></span></div>
-<form class="city" id="cityForm">
+<form class="city" id="cityForm" novalidate>
   <input id="city" type="text" data-i18n-placeholder="city_ph" enterkeyhint="done" autocomplete="off">
   <button id="cityBtn" data-i18n="set"></button>
 </form>
@@ -153,13 +218,14 @@
 
 <h2 data-i18n="feedback_h"></h2>
 <p class="hint" style="margin-top:0;margin-bottom:12px" data-i18n="feedback_hint"></p>
-<button class="upload" id="diagBtn" data-i18n="diag_show"></button>
-<textarea class="diag" id="diag" readonly hidden></textarea>
+<button class="upload" id="diagBtn" onclick="collectDiagnostics()" data-i18n="diag_show"></button>
+<textarea class="diag resize-none" id="diag" readonly hidden></textarea>
 <div class="row" id="diagActions" hidden>
-  <button class="upload" id="diagCopy" data-i18n="diag_copy"></button>
+  <button class="upload" id="diagCopy" onclick="copyDiagnostics()" data-i18n="diag_copy"></button>
   <a class="upload plain" href="https://github.com/pengchujin/aerial-tv/issues/new?template=device.yml" target="_blank" rel="noopener" data-i18n="diag_github"></a>
 </div>
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<dialog id="actionDialog" aria-labelledby="actionMessage"><form id="actionForm" method="dialog" novalidate><p id="actionMessage"></p><input id="actionInput" aria-labelledby="actionMessage" hidden><div class="row"><button class="upload plain" value="cancel" id="actionCancel" data-i18n="action_cancel"></button><button class="upload" value="ok" data-i18n="action_confirm"></button></div></form></dialog>
 
 <script>
 const base = location.pathname.replace(/\/?$/, '/');
@@ -586,6 +652,14 @@ const TEXTS = {
   "Әлі таңдалмаған, сондықтан түсқағазға ілеседі: аэрожиын түсқағазымен аэрожиын, сурет түсқағазымен фотолар, сол суреттен бастап. Бекіту үшін біреуін таңдаңыз."
  ]
 };
+
+// Theme messages extend the same five-language table.
+KEYS.push(...["theme_title", "theme_original", "theme_warm", "theme_forest", "theme_custom", "theme_hint", "theme_name", "theme_focus", "theme_on_focus", "theme_text", "theme_secondary", "theme_glass", "theme_app_focus", "theme_clock", "theme_clock_scale", "theme_roundness", "theme_preview", "theme_preview_body", "theme_apply", "theme_export", "theme_import", "theme_undo", "theme_reload", "theme_saving", "theme_saved", "theme_invalid", "theme_contrast", "theme_stale", "theme_storage", "theme_offline", "theme_imported", "theme_layout", "theme_one_row", "theme_peek", "theme_plate", "theme_names", "theme_right", "theme_large", "action_cancel", "action_confirm", "theme_discard", "theme_choose_file", "theme_wait"]);
+const THEME_TEXTS={"zh": ["主题", "原版", "暖光", "松影", "自定义", "配色沿用 Aerial 界面，应用后可还原。", "主题名称", "选中背景", "选中文字", "正文", "辅助文字", "面板色调", "应用描边", "时钟", "时钟比例", "面板圆角", "预览", "保留壁纸，让内容更清晰。", "应用到电视", "导出电视主题", "导入主题", "还原上次主题", "载入电视当前主题", "正在保存…", "主题已应用到电视", "主题内容或参数无效，请检查后重试。", "文字与背景对比度不足，请调整配色。", "电视上的主题已变化。你的输入仍保留；载入当前主题会放弃这些修改。", "主题未保存，请重试。", "暂时连不到电视，你的输入仍保留。", "已载入文件，应用后才会更改电视。", "主页布局", "单排应用", "露出第二排", "玻璃底板", "显示应用名称", "时钟靠右", "大时钟", "取消", "继续", "放弃尚未应用的主题修改？", "选择 JSON 主题文件（不超过 16 KiB）", "正在连接电视…"], "en": ["Themes", "Original", "Warm", "Forest", "Custom", "Keep the Aerial interface. Every applied theme can be restored.", "Theme name", "Selected background", "Selected text", "Body text", "Secondary text", "Panel tint", "App outline", "Clock", "Clock scale", "Panel roundness", "Preview", "Let the wallpaper breathe and the content read clearly.", "Apply to TV", "Export TV theme", "Import theme", "Restore previous theme", "Load current TV theme", "Saving…", "Theme applied to TV", "Invalid theme or value. Check your input and try again.", "Text contrast is too low. Adjust the colors.", "The TV theme changed. Your edits are kept. Loading the TV theme discards these edits.", "Theme was not saved. Try again.", "Cannot reach the TV. Your edits are kept.", "File loaded. The TV changes only when you apply it.", "Home layout", "One row of apps", "Peek next row", "Glass plate", "Show app names", "Clock on right", "Large clock", "Cancel", "Continue", "Discard unapplied theme edits?", "Choose a JSON theme file (up to 16 KiB)", "Connecting to the TV…"], "ru": ["Темы", "Исходная", "Тёплая", "Лесная", "Своя", "Интерфейс Aerial сохраняется. Прежнюю тему можно вернуть.", "Название темы", "Фон выделения", "Текст выделения", "Основной текст", "Вторичный текст", "Оттенок панели", "Рамка приложения", "Часы", "Масштаб часов", "Скругление панели", "Просмотр", "Обои остаются, а текст читается чётко.", "Применить на ТВ", "Экспорт темы ТВ", "Импорт темы", "Вернуть прежнюю тему", "Загрузить тему ТВ", "Сохранение…", "Тема применена на ТВ", "Неверная тема или значение. Проверьте данные.", "Недостаточная контрастность. Измените цвета.", "Тема ТВ изменилась. Ваши правки сохранены. Загрузка темы ТВ отменит эти правки.", "Тема не сохранена. Повторите.", "Нет связи с ТВ. Ваши правки сохранены.", "Файл загружен. Нажмите «Применить», чтобы изменить ТВ.", "Главный экран", "Один ряд", "Часть второго ряда", "Стеклянная панель", "Названия приложений", "Часы справа", "Большие часы", "Отмена", "Продолжить", "Отменить неприменённые правки темы?", "Выберите JSON-файл темы (до 16 КиБ)", "Подключение к ТВ…"], "uk": ["Теми", "Початкова", "Тепла", "Лісова", "Власна", "Інтерфейс Aerial зберігається. Попередню тему можна повернути.", "Назва теми", "Тло виділення", "Текст виділення", "Основний текст", "Додатковий текст", "Відтінок панелі", "Рамка програми", "Годинник", "Масштаб годинника", "Заокруглення панелі", "Перегляд", "Шпалери зберігаються, а текст добре читається.", "Застосувати на ТБ", "Експорт теми ТБ", "Імпорт теми", "Відновити попередню тему", "Завантажити тему ТБ", "Збереження…", "Тему застосовано на ТБ", "Недійсна тема або значення. Перевірте дані.", "Недостатня контрастність. Змініть кольори.", "Тема ТБ змінилася. Ваші правки збережено. Завантаження теми ТБ відхилить ці правки.", "Тему не збережено. Спробуйте ще раз.", "Немає зв’язку з ТБ. Ваші правки збережено.", "Файл завантажено. Натисніть «Застосувати», щоб змінити ТБ.", "Головний екран", "Один ряд", "Частина другого ряду", "Скляна панель", "Назви програм", "Годинник праворуч", "Великий годинник", "Скасувати", "Продовжити", "Відхилити незастосовані правки теми?", "Виберіть JSON-файл теми (до 16 КіБ)", "Підключення до ТБ…"], "kk": ["Тақырыптар", "Бастапқы", "Жылы", "Орман", "Жеке", "Aerial интерфейсі сақталады. Алдыңғы тақырыпты қайтаруға болады.", "Тақырып атауы", "Таңдалған фон", "Таңдалған мәтін", "Негізгі мәтін", "Қосымша мәтін", "Панель реңкі", "Қолданба жиегі", "Сағат", "Сағат өлшемі", "Панель дөңгелектігі", "Алдын ала қарау", "Тұсқағаз сақталып, мәтін анық көрінеді.", "Теледидарға қолдану", "Тақырыпты экспорттау", "Тақырыпты импорттау", "Алдыңғы тақырыпты қайтару", "Қазіргі тақырыпты жүктеу", "Сақталуда…", "Тақырып қолданылды", "Тақырып не мән жарамсыз. Деректерді тексеріңіз.", "Мәтін контрасты жеткіліксіз. Түстерді өзгертіңіз.", "Теледидар тақырыбы өзгерді. Өзгерістер сақталған. Қазіргі тақырыпты жүктеу бұл өзгерістерді жояды.", "Тақырып сақталмады. Қайталап көріңіз.", "Теледидарға қосылу мүмкін емес. Өзгерістер сақталған.", "Файл жүктелді. Теледидар тек қолданғаннан кейін өзгереді.", "Басты экран", "Бір қатар", "Келесі қатардың бөлігі", "Шыны панель", "Қолданба атаулары", "Сағат оң жақта", "Үлкен сағат", "Бас тарту", "Жалғастыру", "Қолданылмаған өзгерістерді жою керек пе?", "JSON тақырып файлын таңдаңыз (16 КиБ дейін)", "Теледидарға қосылуда…"]};
+for (const language of Object.keys(TEXTS)) TEXTS[language].push(...THEME_TEXTS[language]);
+KEYS.push(...["shortcut_title", "shortcut_shopping", "shortcut_none", "shortcut_hint", "shortcut_save", "shortcut_saved", "shortcut_failed", "shortcut_stale", "shortcut_bridge", "shortcut_reload", "shortcut_discard"]);
+const SHORTCUT_TEXTS={"zh": ["遥控器快捷键", "直播购物键", "不绑定", "为直播购物键选择应用，在其他应用中也可使用。", "保存按键", "按键已保存", "按键未保存，请检查电视连接和目标应用后重试。", "电视上的按键配置已变化。你的选择已保留，请重新载入。", "按键功能尚未就绪，请先安装本仓库的遥控器按键桥接组件。", "载入电视按键配置", "放弃尚未保存的按键选择？"], "en": ["Remote shortcuts", "Live shopping key", "Not assigned", "Choose an app for the shopping key. Works from other apps too.", "Save key", "Key saved", "Could not save the key. Check the TV connection and selected app.", "The TV key binding changed. Your selection is kept. Reload to continue.", "Key setup is incomplete. Install the Remote Key Bridge from this repository first.", "Load TV key binding", "Discard the unsaved key selection?"], "ru": ["Кнопки пульта", "Кнопка покупок", "Не назначено", "Выберите приложение для кнопки покупок. Работает и в других приложениях.", "Сохранить кнопку", "Кнопка сохранена", "Не удалось сохранить. Проверьте соединение с ТВ и приложение.", "Настройка на ТВ изменилась. Выбор сохранён. Загрузите настройку заново.", "Установите компонент Remote Key Bridge из этого репозитория.", "Загрузить настройку ТВ", "Отменить несохранённый выбор кнопки?"], "uk": ["Кнопки пульта", "Кнопка покупок", "Не призначено", "Виберіть програму для кнопки покупок. Працює й в інших програмах.", "Зберегти кнопку", "Кнопку збережено", "Не вдалося зберегти. Перевірте з’єднання з ТВ і програму.", "Налаштування на ТВ змінилося. Вибір збережено. Завантажте налаштування знову.", "Установіть компонент Remote Key Bridge із цього репозиторію.", "Завантажити налаштування ТВ", "Відкинути незбережений вибір кнопки?"], "kk": ["Пульт пернелері", "Сатып алу пернесі", "Тағайындалмаған", "Сатып алу пернесіне қолданба таңдаңыз. Басқа қолданбаларда да жұмыс істейді.", "Пернені сақтау", "Перне сақталды", "Сақтау мүмкін болмады. Теледидар байланысы мен қолданбаны тексеріңіз.", "Теледидардағы баптау өзгерді. Таңдауыңыз сақталды. Баптауды қайта жүктеңіз.", "Осы репозиторийдегі Remote Key Bridge құрамдасын орнатыңыз.", "Теледидар баптауын жүктеу", "Сақталмаған перне таңдауын жою керек пе?"]};
+for (const language of Object.keys(TEXTS)) TEXTS[language].push(...SHORTCUT_TEXTS[language]);
 const LANGS = Object.keys(TEXTS);
 const LANG = (() => {
   const asked = new URLSearchParams(location.search).get('lang');
@@ -607,7 +681,10 @@ function initLangSwitch() {
   const s = $('#lang');
   for (const l of LANGS) { const o = document.createElement('option'); o.value = l; o.textContent = NAMES[l] || l; s.appendChild(o); }
   s.value = LANG;
-  s.onchange = () => {
+  s.onchange = async () => {
+    if (themeDirty && !await confirmAction(t('theme_discard'))) { s.value=LANG; return; }
+    if (shortcutDirty && !await confirmAction(t('shortcut_discard'))) { s.value=LANG; return; }
+    themeDirty=false; shortcutDirty=false;
     try { localStorage.setItem('aerial-lang', s.value); } catch (e) {}
     const u = new URL(location.href); u.searchParams.set('lang', s.value); location.replace(u.toString());
   };
@@ -639,9 +716,13 @@ function toast(msg) {
 
 async function api(path, body) {
   const opts = body ? { method: 'POST', body: new URLSearchParams(body) } : {};
-  const r = await fetch(base + path, opts);
+  const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 12000);
+  let r; try { r = await fetch(base + path, {...opts,signal:controller.signal}); } finally { clearTimeout(timer); }
   if (!r.ok) throw new Error(r.status);
-  return r.json();
+  const incoming = await r.json();
+  if (state?.theme && incoming.theme?.revision < state.theme.revision) incoming.theme = state.theme;
+  if (state?.shortcuts && incoming.shortcuts?.revision < state.shortcuts.revision) incoming.shortcuts = state.shortcuts;
+  return incoming;
 }
 
 function card(w, selected, extraClass) {
@@ -661,7 +742,7 @@ function card(w, selected, extraClass) {
     d.className = 'del'; d.textContent = '✕'; d.setAttribute('aria-label', t('aria_delete'));
     d.onclick = async e => {
       e.stopPropagation();
-      if (!confirm(t('confirm_delete'))) return;
+      if (!await confirmAction(t('confirm_delete'))) return;
       state = await api('api/delete', { id: w.id }); render();
     };
     b.appendChild(d);
@@ -703,7 +784,7 @@ function renderApps() {
       n.className = 'del ren'; n.textContent = '✎'; n.setAttribute('aria-label', t('aria_rename'));
       n.onclick = async e => {
         e.stopPropagation();
-        const name = prompt(t('prompt_rename', { port: a.port }), a.name || '');
+        const name = await promptAction(t('prompt_rename', { port: a.port }), a.name || '');
         if (name === null) return;
         try { state = await api('api/source/name', { app: a.key, name }); render(); toast(t(name.trim() ? 'toast_renamed' : 'toast_name_reset')); }
         catch (err) { toast(t('toast_rename_fail')); }
@@ -716,7 +797,7 @@ function renderApps() {
       r.className = 'del'; r.textContent = '↺'; r.setAttribute('aria-label', t('aria_reset_icon'));
       r.onclick = async e => {
         e.stopPropagation();
-        if (!confirm(t('confirm_reset_icon', { label: a.label }))) return;
+        if (!await confirmAction(t('confirm_reset_icon', { label: a.label }))) return;
         state = await api('api/icon/reset', { app: a.key }); render(); toast(t('toast_icon_reset'));
       };
       b.appendChild(r);
@@ -726,6 +807,8 @@ function renderApps() {
 }
 
 function render() {
+  renderTheme();
+  renderShortcut();
   renderWeather();
   renderApps();
   document.querySelectorAll('#ss button').forEach(b =>
@@ -763,12 +846,8 @@ function render() {
   }
 }
 
-document.querySelectorAll('#ss button').forEach(b => b.onclick = async () => {
-  state = await api('api/screensaver', { mode: b.dataset.mode }); render();
-});
-document.querySelectorAll('#focus button').forEach(b => b.onclick = async () => {
-  state = await api('api/focus', { style: b.dataset.style }); render(); toast(t('toast_tv_updated'));
-});
+async function chooseScreensaver(mode) { try { state=await api('api/screensaver',{mode}); render(); } catch (_) { toast(t('toast_set_fail')); } }
+async function chooseFocus(style) { try { state=await api('api/focus',{style}); render(); toast(t('toast_tv_updated')); } catch (_) { toast(t('toast_set_fail')); } }
 
 $('#file').onchange = async e => {
   const files = [...e.target.files]; if (!files.length) return;
@@ -808,7 +887,7 @@ $('#iconFile').onchange = async e => {
   } catch (err) { toast(t('toast_send_fail')); }
 };
 
-$('#diagBtn').onclick = async () => {
+async function collectDiagnostics() {
   const b = $('#diagBtn'); b.disabled = true; b.textContent = t('diag_collecting');
   try {
     const r = await fetch(base + 'api/diagnostics');
@@ -826,9 +905,167 @@ $('#diagCopy').onclick = () => {
   toast(t(ok ? 'toast_copied' : 'toast_copy_manual'));
 };
 
+let shortcutDirty=false, shortcutBusy=false, shortcutRevision=0;
+function shortcutPending(value) {
+  shortcutBusy=value;
+  $('#shortcutForm').querySelectorAll('select,button').forEach(e=>e.disabled=value);
+  $('#shortcutReload').disabled=value;
+}
+function renderShortcut() {
+  const data=state?.shortcuts;
+  if(!data || shortcutDirty || shortcutBusy) return;
+  const select=$('#shortcutApp'); select.replaceChildren();
+  const add=(value,label)=>{const o=document.createElement('option');o.value=value;o.textContent=label;select.appendChild(o);};
+  add('',t('shortcut_none'));
+  for(const a of data.apps || []) add(a.key,a.label);
+  if(data.app && !(data.apps || []).some(a=>a.key===data.app)) add(data.app,data.label);
+  select.value=data.app || ''; shortcutRevision=data.revision;
+  if(!data.ready) $('#shortcutStatus').textContent=t('shortcut_bridge');
+}
+$('#shortcutApp').onchange=()=>{shortcutDirty=true;$('#shortcutStatus').textContent='';};
+$('#shortcutForm').onsubmit=async e=>{
+  e.preventDefault();if(shortcutBusy)return;
+  const selected=$('#shortcutApp').value;shortcutPending(true);
+  try {
+    state=await api('api/shortcut',{app:selected,revision:String(shortcutRevision)});
+    shortcutDirty=false;shortcutPending(false);render();$('#shortcutStatus').classList.remove('error');$('#shortcutStatus').textContent=t('shortcut_saved');
+  } catch(error) {
+    $('#shortcutStatus').textContent=t(error.message==='409'?'shortcut_stale':'shortcut_failed');
+    $('#shortcutStatus').classList.add('error');
+  } finally {shortcutPending(false);}
+};
+$('#shortcutReload').onclick=async()=>{
+  if(shortcutBusy || (shortcutDirty && !await confirmAction(t('shortcut_discard'))))return;
+  shortcutPending(true);
+  try {state=await api('api/state');shortcutDirty=false;shortcutPending(false);$('#shortcutStatus').textContent='';$('#shortcutStatus').classList.remove('error');render();}
+  catch(error){$('#shortcutStatus').textContent=t('shortcut_failed');}
+  finally {shortcutPending(false);}
+};
+
 initLangSwitch();
 applyI18n();
-async function refresh() { try { state = await api('api/state'); render(); } catch (e) {} }
+
+function askAction(message, value) {
+  return new Promise(resolve => {
+    const dialog = $('#actionDialog'); const input = $('#actionInput'); const previous = document.activeElement;
+    $('#actionMessage').textContent = message; input.hidden = value === undefined; input.value = value || '';
+    dialog.returnValue = ''; dialog.onclose = () => { const result = dialog.returnValue === 'ok' ? (value === undefined ? true : input.value) : (value === undefined ? false : null); previous?.focus(); resolve(result); };
+    dialog.showModal(); (value === undefined ? $('#actionCancel') : input).focus();
+  });
+}
+$('#actionDialog form').addEventListener('keydown', e => { if (e.key==='Enter' && (e.isComposing || e.keyCode===229)) e.preventDefault(); });
+const confirmAction = message => askAction(message);
+const promptAction = (message, value) => askAction(message, value);
+let themeDirty = false, themeBusy = false, themeDraft = null, themeRevision = null, themeLastRevision = null;
+function themeMessage(key, error = false) { const e = $('#themeStatus'); e.textContent = key ? t(key) : ''; e.classList.toggle('error', error); }
+function themeDefinition() {
+  const d = JSON.parse(JSON.stringify(themeDraft)); d.name = $('#themeName').value;
+  for (const input of document.querySelectorAll('[data-color]')) {
+    const role = input.dataset.color; const old = d.colors[role]; const alpha = old?.length === 9 ? old.slice(1,3) : 'FF';
+    d.colors[role] = '#' + alpha + input.value.slice(1);
+  }
+  d.metrics = { clock_scale: Number($('#themeClockScale').value) / 100, panel_roundness: Number($('#themeRoundness').value) / 100 };
+  d.layout = {}; for (const input of document.querySelectorAll('[data-layout]')) d.layout[input.dataset.layout] = input.checked;
+  return d;
+}
+function themePreview() {
+  if (!themeDraft) return;
+  const d = themeDefinition(); const rgb = key => '#' + d.colors[key].slice(-6);
+  const p = $('#themePreview'); p.style.background = rgb('glass'); p.style.borderRadius = (16*d.metrics.panel_roundness)+'px';
+  $('#themePreviewClock').style.color = rgb('clock'); $('#themePreviewClock').style.fontSize = (40*d.metrics.clock_scale)+'px';
+  $('#themePreviewText').style.color = rgb('text'); const f = $('#themePreviewFocus'); f.style.background = rgb('focus'); f.style.color = rgb('on_focus');
+  $('#themeClockValue').textContent = $('#themeClockScale').value + '%'; $('#themeRoundValue').textContent = $('#themeRoundness').value + '%';
+}
+function fillTheme(definition, layout, revision) {
+  themeDraft = JSON.parse(JSON.stringify(definition)); themeDraft.colors ||= {}; themeDraft.metrics ||= {}; themeDraft.version ??= 1;
+  const defaults = { focus:'#FFF5F5F7',on_focus:'#FF1D1D1F',text:'#FFFFFFFF',secondary:'#99EBEBF5',glass:'#E6202022',app_focus:'#FFFFFFFF',clock:'#FFFFFFFF' };
+  themeDraft.colors = {...defaults,...themeDraft.colors}; themeRevision = revision;
+  $('#themeName').value = themeDraft.name || '';
+  for (const input of document.querySelectorAll('[data-color]')) { const value = themeDraft.colors[input.dataset.color]; input.value = /^#(?:[0-9a-f]{6}|[0-9a-f]{8})$/i.test(value) ? '#'+value.slice(-6) : '#ffffff'; }
+  $('#themeClockScale').value = Math.round((themeDraft.metrics.clock_scale ?? 1)*100); $('#themeRoundness').value = Math.round((themeDraft.metrics.panel_roundness ?? 1)*100);
+  for (const input of document.querySelectorAll('[data-layout]')) input.checked = (layout?.[input.dataset.layout] ?? themeDraft.layout?.[input.dataset.layout]) === true;
+  themeDirty = false; themePreview();
+}
+function setThemeBusy(value) {
+  themeBusy = value; $('#themeForm').setAttribute('aria-busy', String(value));
+  document.querySelectorAll('#themes button, #themes input').forEach(e => e.disabled = value);
+  $('#themeUndo').disabled = value || !state?.theme?.canUndo;
+}
+async function themeRequest(fields) {
+  if (themeBusy) return;
+  setThemeBusy(true); themeMessage('theme_saving');
+  document.querySelectorAll('#themeForm [aria-invalid]').forEach(e => e.removeAttribute('aria-invalid'));
+  let invalidFocus = null;
+  try {
+    const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 12000);
+    let response; try { response = await fetch(base+'api/theme', {method:'POST',body:new URLSearchParams(fields),signal:controller.signal}); } finally { clearTimeout(timer); }
+    const body = await response.json();
+    if (!response.ok) {
+      const code = ['theme_stale','theme_contrast','theme_invalid','theme_storage'].includes(body.error) ? body.error : 'theme_storage';
+      themeMessage(code,true);
+      const field = document.querySelector('[data-color="'+String(body.field).replace(/[^a-z_]/g,'')+'"]');
+      const target = field || (body.field === 'name' ? $('#themeName') : null); if (target) { target.setAttribute('aria-invalid','true'); invalidFocus=target; }
+      return;
+    }
+    state = body; themeDirty = false; themeLastRevision = null; setThemeBusy(false); render(); themeMessage('theme_saved');
+  } catch (_) { themeMessage('theme_offline',true); }
+  finally { setThemeBusy(false); invalidFocus?.focus(); }
+}
+function renderTheme() {
+  const current = state?.theme; if (!current) return;
+  if (!themeDraft) setThemeBusy(false);
+  $('#themeUndo').disabled = themeBusy || !current.canUndo; $('#themeExport').href = base+'api/theme/export';
+  if (themeLastRevision === current.revision) return;
+  const root = $('#themePresets');
+  // Keep the focused preset element while polling; a theme change updates its pressed state.
+  if (!root.children.length || Array.from(root.children).map(b=>b.dataset.id).join() !== current.presets.map(p=>p.id).join()) {
+    root.replaceChildren();
+    for (const preset of current.presets) {
+      const button = document.createElement('button'); button.type='button'; button.dataset.id=preset.id;
+      button.textContent = preset.id === 'custom' ? preset.name : t('theme_'+(preset.id==='aerial'?'original':preset.id));
+      button.onclick = async () => { if (themeDirty && !await confirmAction(t('theme_discard'))) return; await themeRequest({action:'select',id:preset.id,revision:String(state.theme.revision)}); };
+      root.appendChild(button);
+    }
+  }
+  for (const button of root.children) {
+    button.setAttribute('aria-pressed', String(button.dataset.id===current.id));
+    if (button.dataset.id==='custom') button.textContent=current.presets.find(p=>p.id==='custom')?.name || t('theme_custom');
+  }
+  if (!themeDirty && !themeBusy) { fillTheme(current.definition,current.layout,current.revision); themeMessage(null); }
+  themeLastRevision = current.revision;
+}
+$('#themeForm').addEventListener('input', () => { themeDirty=true; themePreview(); });
+$('#themeForm').addEventListener('keydown', e => { if (e.key==='Enter' && (e.isComposing || e.keyCode===229)) e.preventDefault(); });
+$('#themeForm').onsubmit = async e => { e.preventDefault(); if (themeDraft) await themeRequest({action:'save',definition:JSON.stringify(themeDefinition()),revision:String(themeRevision)}); };
+$('#themeUndo').onclick = async () => { if (themeDirty && !await confirmAction(t('theme_discard'))) return; await themeRequest({action:'undo',revision:String(state.theme.revision)}); };
+async function loadCurrentTheme() {
+  if (themeDirty && !await confirmAction(t('theme_discard'))) return;
+  if (themeBusy && themeDraft) return;
+  setThemeBusy(true);
+  try { state=await api('api/state'); themeDirty=false; themeLastRevision=null; setThemeBusy(false); render(); }
+  catch (_) { themeMessage('theme_offline',true); }
+  finally { setThemeBusy(false); }
+};
+$('#themeFile').onchange = async e => {
+  const file=e.target.files[0]; if (!file || themeBusy) return;
+  if (themeDirty && !await confirmAction(t('theme_discard'))) { e.target.value=''; return; }
+  setThemeBusy(true);
+  try {
+    if (file.size > 16384) throw new Error('size');
+    const raw=await file.text();
+    const controller=new AbortController(); const timer=setTimeout(()=>controller.abort(),12000);
+    let response; try { response=await fetch(base+'api/theme',{method:'POST',body:new URLSearchParams({action:'validate',definition:raw,revision:String(state.theme.revision)}),signal:controller.signal}); } finally { clearTimeout(timer); }
+    const body=await response.json();
+    if (!response.ok) { themeMessage(body.error==='theme_contrast'?'theme_contrast':'theme_invalid',true); return; }
+    fillTheme(body.definition,{...state.theme.layout,...body.definition.layout},state.theme.revision); themeDirty=true; themeMessage('theme_imported');
+  } catch (err) { themeMessage(err.message==='size'?'theme_invalid':'theme_offline',true); }
+  finally { e.target.value=''; setThemeBusy(false); }
+};
+window.addEventListener('beforeunload', e => { if (themeDirty || shortcutDirty) { e.preventDefault(); e.returnValue=''; } });
+
+setThemeBusy(true); $('#themeReload').disabled=false;
+let refreshPending=false;
+async function refresh() { if(refreshPending)return; refreshPending=true; try { state=await api('api/state'); render(); } catch (_) { if(!state)themeMessage('theme_offline',true); } finally {refreshPending=false;} }
 refresh();
 setInterval(() => { if (!document.hidden) refresh(); }, 6000);
 </script>

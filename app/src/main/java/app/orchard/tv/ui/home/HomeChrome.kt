@@ -449,7 +449,7 @@ fun CornerClock(now: LocalDateTime, modifier: Modifier = Modifier, toSaver: () -
     val shadow = Shadow(Color.Black.copy(alpha = 0.5f), blurRadius = 8f)
     Row(modifier.height(34.dp), verticalAlignment = Alignment.CenterVertically) {
         BasicText(
-            timeText(now), style = Type.Title.copy(color = dim, shadow = shadow),
+            timeText(now), style = Type.Title.copy(color = Type.Clock.color.copy(alpha = 0.92f), shadow = shadow),
             modifier = Modifier.toSaverClock(toSaver, Type.Title.fontSize, Type.Title.fontSize.value.dp * CAP_TOP),
         )
         Weather.now?.let { w ->

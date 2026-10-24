@@ -46,7 +46,7 @@ object Updates {
     const val CONTROL_CENTER_MAX_AGE_MS = RETRY_MS
 
     /** This build's version, e.g. "1.17" (the guard build's "-guard" left off). */
-    val current: String = BuildConfig.VERSION_NAME.substringBefore('-')
+    val current: String = if (BuildConfig.WORKBENCH) BuildConfig.VERSION_NAME else BuildConfig.VERSION_NAME.substringBefore('-')
 
     /** The newer release's version, or null when this is the latest (or nothing is known yet). */
     var available by mutableStateOf<String?>(null); private set
@@ -58,12 +58,18 @@ object Updates {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var started = false
     private var lastAttempt = 0L
+    enum class Check { Unknown, Checking, Current, Available, Failed }
+    var check by mutableStateOf(Check.Unknown); private set
+    private var workbenchRelease: WorkbenchRelease? = null
 
     fun init(context: Context) {
         if (started) return
         started = true
         prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        available = prefs.getString("latest", null)?.takeIf { newer(it, current) }
+        if (BuildConfig.WORKBENCH) {
+            workbenchRelease = prefs.getString("workbench_manifest", null)?.let { runCatching { WorkbenchRelease.parse(it) }.getOrNull() }
+            available = workbenchRelease?.takeIf { it.code > BuildConfig.VERSION_CODE }?.name
+        } else available = prefs.getString("latest", null)?.takeIf { newer(it, current) }
         // A download left from an install that has since finished or been given up.
         scope.launch(Dispatchers.IO) {
             apkFile(context).takeIf { System.currentTimeMillis() - it.lastModified() > 60 * 60 * 1000L }?.delete()
@@ -76,7 +82,8 @@ object Updates {
      * release out an hour ago was not shown there for hours more (issue #301).
      */
     fun checkIfStale(force: Boolean = false, maxAgeMs: Long = CHECK_EVERY_MS) {
-        if (!started) return
+        if (!started || check == Check.Checking) return
+        if (BuildConfig.WORKBENCH) { checkWorkbench(force, maxAgeMs); return }
         val now = System.currentTimeMillis()
         if (!force && (now - lastAttempt < RETRY_MS || now - prefs.getLong("checked_at", 0) < maxAgeMs)) return
         lastAttempt = now
@@ -89,6 +96,22 @@ object Updates {
             } ?: return@launch
             prefs.edit { putString("latest", latest); putLong("checked_at", System.currentTimeMillis()) }
             available = latest.takeIf { newer(it, current) }
+        }
+    }
+
+    private fun checkWorkbench(force: Boolean, maxAgeMs: Long) {
+        val now = System.currentTimeMillis()
+        if (!force && (now - lastAttempt < RETRY_MS || now - prefs.getLong("checked_at", 0) < maxAgeMs)) return
+        lastAttempt = now; check = Check.Checking
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching { ReleaseHttp.manifest().let { it to WorkbenchRelease.parse(it) } }.getOrNull()
+            }
+            if (result == null) { check = Check.Failed; return@launch }
+            workbenchRelease = result.second
+            prefs.edit { putString("workbench_manifest", result.first); putLong("checked_at", System.currentTimeMillis()) }
+            available = result.second.takeIf { it.code > BuildConfig.VERSION_CODE }?.name
+            check = if (available != null) Check.Available else Check.Current
         }
     }
 
@@ -121,6 +144,7 @@ object Updates {
         data class Downloading(val fraction: Float) : Install
         /** The system installer is open; it asks the owner and replaces Aerial, which restarts. */
         data object Opened : Install
+        data object Installing : Install
         /** Aerial may not install apps yet; the TV's setting for it is open. */
         data object NeedsPermission : Install
         data class Failed(val reason: Failure) : Install
@@ -141,7 +165,7 @@ object Updates {
     private const val PACKAGE = "app.orchard.tv"
 
     /** Whether this copy can update itself from the release at all. */
-    fun canInstall(context: Context): Boolean = context.packageName == PACKAGE
+    fun canInstall(context: Context): Boolean = context.packageName == if (BuildConfig.WORKBENCH) "app.hzf.aerial" else PACKAGE
 
     /**
      * Downloads this flavor's APK of the latest release and opens the system installer on it.
@@ -151,10 +175,10 @@ object Updates {
      * with this copy's key and no older, or the installer would only fail with a less clear message.
      */
     fun install(context: Context) {
-        if (install is Install.Downloading) return
+        if (install is Install.Downloading || install == Install.Installing) return
         val app = context.applicationContext
         if (!canInstall(app)) { install = Install.Failed(Failure.NotOfficial); return }
-        if (Build.VERSION.SDK_INT >= 26 && !app.packageManager.canRequestPackageInstalls()) {
+        if (!TclSelfUpdate.supported(app) && Build.VERSION.SDK_INT >= 26 && !app.packageManager.canRequestPackageInstalls()) {
             // Xiaomi MiTV-MFTR0 has this page; TCL MT5879 does not (tools/install.sh grants it there).
             val settings = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${app.packageName}"))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -172,19 +196,27 @@ object Updates {
             val file = apkFile(app)
             val ready = withContext(Dispatchers.IO) {
                 // A download kept from a moment ago, when the owner backed out of the installer.
-                verify(app, file)?.takeIf { testApk == null && it.versionName?.substringBefore('-') == available }
+                if (BuildConfig.WORKBENCH) downloadFrom(app, file)
+                else verify(app, file)?.takeIf { testApk == null && it.versionName?.substringBefore('-') == available }
                     ?: downloadFrom(app, file)
             }
             val failure = when {
                 ready == null -> Failure.Download
                 !sameSigner(app, ready) -> Failure.NotOfficial
-                versionCode(ready) < BuildConfig.VERSION_CODE -> Failure.NotNewer
+                versionCode(ready) < BuildConfig.VERSION_CODE || (BuildConfig.WORKBENCH &&
+                    (versionCode(ready) <= BuildConfig.VERSION_CODE || versionCode(ready) != workbenchRelease?.code || ready.versionName?.removeSuffix("-guard") != workbenchRelease?.name)) -> Failure.NotNewer
                 else -> null
             }
             if (failure != null) {
                 Log.w(TAG, "not installing: $failure")
                 if (failure != Failure.Download) file.delete()
                 install = Install.Failed(failure)
+                return@launch
+            }
+            if (TclSelfUpdate.supported(app)) {
+                install = Install.Installing
+                val ok = TclSelfUpdate.install(app, file)
+                install = if (ok) Install.Idle else Install.Failed(Failure.Blocked)
                 return@launch
             }
             install = if (openInstaller(context, app, file)) Install.Opened else Install.Failed(Failure.Blocked)
@@ -198,7 +230,7 @@ object Updates {
 
     /** Back to the button, when the update page is left. */
     fun resetInstall() {
-        if (install !is Install.Downloading) install = Install.Idle
+        if (install !is Install.Downloading && install != Install.Installing) install = Install.Idle
     }
 
     private fun apkFile(context: Context): File {
@@ -221,6 +253,14 @@ object Updates {
             if (Build.VERSION.SDK_INT < 24) file.setReadable(true, false)
             return verify(context, file)
         }
+        if (BuildConfig.WORKBENCH) {
+            val release = workbenchRelease?.takeIf { it.code > BuildConfig.VERSION_CODE } ?: return null
+            val asset = release.assets[BuildConfig.FLAVOR] ?: return null
+            return runCatching {
+                download(asset.url, file, asset)
+                verify(context, file)
+            }.getOrElse { file.delete(); null }
+        }
         val name = "aerial-${BuildConfig.FLAVOR}.apk"
         val sources = listOf(
             "https://aerial.qust.me/download/$name",
@@ -236,15 +276,16 @@ object Updates {
         return null
     }
 
-    private suspend fun download(url: String, file: File) {
+    private suspend fun download(url: String, file: File, asset: WorkbenchRelease.Asset? = null) {
         file.parentFile?.mkdirs()
         val part = File(file.parentFile, file.name + ".part")
-        val c = URL(url).openConnection() as HttpURLConnection
+        val c = if (asset != null) ReleaseHttp.open(url) else URL(url).openConnection() as HttpURLConnection
         c.connectTimeout = 10_000
         c.readTimeout = 20_000
         try {
             if (c.responseCode != HttpURLConnection.HTTP_OK) error("HTTP ${c.responseCode}")
-            val total = c.contentLength.toLong()
+            val total = asset?.size ?: c.contentLength.toLong()
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
             var done = 0L
             var shown = -1
             c.inputStream.use { input ->
@@ -253,8 +294,10 @@ object Updates {
                     while (true) {
                         val n = input.read(buf)
                         if (n < 0) break
-                        out.write(buf, 0, n)
                         done += n
+                        if (done > WorkbenchRelease.MAX_APK || (asset != null && done > asset.size)) error("Download too large")
+                        out.write(buf, 0, n)
+                        digest.update(buf, 0, n)
                         val percent = if (total > 0) (done * 100 / total).toInt() else 0
                         if (percent != shown) {
                             shown = percent
@@ -264,6 +307,7 @@ object Updates {
                 }
             }
             if (total > 0 && done != total) error("got $done of $total bytes")
+            if (asset != null && digest.digest().joinToString("") { "%02x".format(it.toInt() and 255) } != asset.sha256) error("Checksum mismatch")
             if (!part.renameTo(file)) error("could not keep the download")
             // The installer on Android 5 and 6 opens the file itself.
             if (Build.VERSION.SDK_INT < 24) file.setReadable(true, false)
@@ -290,9 +334,9 @@ object Updates {
             val sigs = if (Build.VERSION.SDK_INT >= 28) info?.signingInfo?.apkContentsSigners else info?.signatures
             return sigs?.takeIf { it.isNotEmpty() }?.map { it.toCharsString() }?.toSet()
         }
-        val theirs = signers(apk) ?: return true
+        val theirs = signers(apk) ?: return !BuildConfig.WORKBENCH
         val flags = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
-        val ours = signers(runCatching { pm.getPackageInfo(context.packageName, flags) }.getOrNull()) ?: return true
+        val ours = signers(runCatching { pm.getPackageInfo(context.packageName, flags) }.getOrNull()) ?: return !BuildConfig.WORKBENCH
         return theirs == ours
     }
 

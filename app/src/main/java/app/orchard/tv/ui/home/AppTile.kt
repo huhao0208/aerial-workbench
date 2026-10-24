@@ -91,6 +91,8 @@ import app.orchard.tv.ui.components.smoothRectPath
 import app.orchard.tv.ui.theme.LocalReducedMotion
 import app.orchard.tv.ui.theme.Motion
 import app.orchard.tv.ui.theme.Type
+import app.orchard.tv.ui.theme.ThemeStore
+import androidx.compose.ui.graphics.ColorFilter
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -138,6 +140,8 @@ fun AppTile(
     val reduced = LocalReducedMotion.current
     // The tile's face at its drawn size, made on first draw and kept while the artwork lasts.
     val faceFor = remember(app.art) { arrayOfNulls<Pair<IntSize, ImageBitmap>>(2) }
+    val focusColor = ThemeStore.current.color("app_focus")
+    val focusTint = remember(focusColor) { ColorFilter.tint(Color(focusColor)) }
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
 
@@ -452,7 +456,7 @@ fun AppTile(
                 val e = frame.ext - RingGap.toPx() * 0.6f * (1f - ringIn)
                 translate(-e, -e) {
                     scale((size.width + 2 * e) / frame.image.width, (size.height + 2 * e) / frame.image.height, pivot = Offset.Zero) {
-                        drawImage(frame.image)
+                        drawImage(frame.image, colorFilter = focusTint)
                     }
                 }
             }

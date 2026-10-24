@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.createBitmap
 import app.orchard.tv.ui.theme.Palette
+import app.orchard.tv.ui.theme.ThemeStore
 import app.orchard.tv.wallpaper.Wallpapers
 import kotlin.math.roundToInt
 
@@ -52,10 +53,21 @@ import kotlin.math.roundToInt
  * rounded rect, which holds it.
  */
 fun Modifier.liquidGlass(corner: Dp, bottomCorners: Boolean = true): Modifier = composed {
+    val effectiveCorner = corner * ThemeStore.current.panelRoundness
+    val glassColor = ThemeStore.current.color("glass")
+    val panelTint = remember(glassColor) {
+        val defaults = intArrayOf(32, 32, 34)
+        val shifts = intArrayOf(16, 8, 0)
+        val offsets = FloatArray(3) { i -> 14f + (((glassColor ushr shifts[i]) and 255) - defaults[i]) * .75f }
+        ColorFilter.colorMatrix(ColorMatrix(floatArrayOf(
+            .48f, 0f, 0f, 0f, offsets[0], 0f, .48f, 0f, 0f, offsets[1],
+            0f, 0f, .48f, 0f, offsets[2], 0f, 0f, 0f, 1f, 0f,
+        )))
+    }
     val frost = Wallpapers.frosted.takeIf { Wallpapers.backdrop != null }
     var at by remember { mutableStateOf(Offset.Zero) }
     var root by remember { mutableStateOf(IntSize.Zero) }
-    val shape = if (bottomCorners) RoundedCornerShape(corner) else RoundedCornerShape(topStart = corner, topEnd = corner)
+    val shape = if (bottomCorners) RoundedCornerShape(effectiveCorner) else RoundedCornerShape(topStart = effectiveCorner, topEnd = effectiveCorner)
     this
         .onGloballyPositioned { c ->
             at = c.positionInRoot()
@@ -66,7 +78,7 @@ fun Modifier.liquidGlass(corner: Dp, bottomCorners: Boolean = true): Modifier = 
         .clip(shape)
         .drawWithCache {
             val shader = frost?.let { BitmapShader(it.asAndroidBitmap(), Shader.TileMode.CLAMP, Shader.TileMode.CLAMP) }
-            val radius = corner.toPx()
+            val radius = effectiveCorner.toPx()
             val w = size.width.roundToInt().coerceAtLeast(1)
             val h = size.height.roundToInt().coerceAtLeast(1)
             val mask = smoothMask(w, h, radius, if (bottomCorners) radius else 0f)
@@ -86,7 +98,7 @@ fun Modifier.liquidGlass(corner: Dp, bottomCorners: Boolean = true): Modifier = 
                     // Mali-G31), and before Android 9 hardware drawing cannot compose two bitmaps.
                     drawContext.canvas.saveLayer(Rect(Offset.Zero, size), ComposePaint())
                     drawImage(flat, dstSize = IntSize(w, h))
-                    drawRect(brush, colorFilter = PanelTint, blendMode = BlendMode.SrcIn)
+                    drawRect(brush, colorFilter = panelTint, blendMode = BlendMode.SrcIn)
                     drawContext.canvas.restore()
                 }
                 drawGlassEdge(size, radius, bottomCorners)
@@ -135,11 +147,3 @@ fun glassEdge(w: Int, h: Int, radius: Float, rim: Float, bottomCorners: Boolean 
         )
         bitmap.frozen().asImageBitmap()
     }
-
-/** Panels: the frosted picture at half its light, lifted a little, so white text reads on snow. */
-private val PanelTint = ColorFilter.colorMatrix(ColorMatrix(floatArrayOf(
-    0.48f, 0f, 0f, 0f, 14f,
-    0f, 0.48f, 0f, 0f, 14f,
-    0f, 0f, 0.48f, 0f, 14f,
-    0f, 0f, 0f, 1f, 0f,
-)))
