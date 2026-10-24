@@ -9,7 +9,7 @@ class BackgroundCleanerTest {
 
     @Test fun names_only_valid_foreign_packages_sorted_and_deduped() {
         assertEquals(
-            "am force-stop com.a.b; am force-stop com.x.y",
+            "am force-stop com.a.b || true; am force-stop com.x.y || true; true",
             BackgroundCleaner.command(listOf("com.x.y", "com.a.b", "com.a.b"), self),
         )
     }
@@ -18,7 +18,7 @@ class BackgroundCleanerTest {
         assertNull(BackgroundCleaner.command(listOf(self), self))
         assertNull(BackgroundCleaner.command(listOf("x y", "a;rm", "-"), self))
         assertEquals(
-            "am force-stop ok.app",
+            "am force-stop ok.app || true; true",
             BackgroundCleaner.command(listOf("ok.app", "a;b", self, "x y"), self),
         )
     }

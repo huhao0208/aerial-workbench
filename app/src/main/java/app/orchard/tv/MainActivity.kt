@@ -507,9 +507,11 @@ class MainActivity : ComponentActivity() {
         vm.refreshSystem()
         // Back in front by any route (Home was handled in onNewIntent, which runs first; Back from
         // the app lands here directly), so the next Home press is a Home-on-Home again.
-        if (openedAppSinceHome) app.orchard.tv.system.BackgroundCleaner.onReturnedFromApp(this)
+        val fallback = LaunchFallback.next()
+        // Not while a bounced page is being reopened: the stop could land right on it.
+        if (openedAppSinceHome && fallback == null) app.orchard.tv.system.BackgroundCleaner.onReturnedFromApp(this)
         openedAppSinceHome = false
-        LaunchFallback.next()?.let {
+        fallback?.let {
             DiagLog.i("the page just opened closed at once; opening ${it.component ?: it.action}")
             open(it)
         }
