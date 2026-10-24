@@ -18,7 +18,7 @@ On 2026-10-24, the maintainer migrated only tracked launcher project sources fro
 
 ## Version and device boundary
 
-Current source candidate is `1.41-wb.15` / code 59; bridge `1.1-dev` / code 2. These versions distinguish the new notice bundle and source-fork build from older artifacts. They are not promoted to the signed stable channel. The existing TV stable release remains wb.10 / code 54. wb.11 / code 55 remains the firmware-builder's pinned candidate input.
+Current source candidate is `1.41-wb.16` / code 60; bridge `1.1-dev` / code 2. wb.15 / code 59 is installed through the signed update channel. wb.16 consolidates that channel into this public source repository's Releases. The old APK-only repository retains one migration release for clients whose updater allowlist still points there. wb.11 / code 55 remains the firmware-builder's pinned candidate input.
 
 The historical TV validation belongs to the prior signed versions. Migrating source and passing unit tests does not prove a new APK has been installed or verified on television. The source-fork migration itself did not install to the television; the later Root-preparation validation below records the separately installed candidate.
 
@@ -51,3 +51,10 @@ Device follow-up, 2026-10-24: the signed wb.14 / code 58 candidate is installed 
 The owner requested keeping the connection throughout Home and using the normal signed update channel. There is no idle timer, keepalive or closed-menu polling. Menu GET still reads hardware; backgrounding releases the connection and resets resume preparation. Denial/backoff and stale-read protection remain.
 
 Reproduced on wb.14: the saved screensaver preference was explicitly Dolby Vision, so the old Auto-only SDR rule did not apply. Home read brightness 1 / low-blue 1; video read brightness 100 / low-blue 1. On the explicitly Root-opted-in TCL, wb.15 now resolves both Auto and saved Dolby choices to 4K SDR (or 1080p fallback), with five-language explanation. Preference files are not rewritten and other apps / non-opted-in devices retain their HDR behavior. Keeping a saved low-blue flag is not a measurement of emitted blue light. Tests/build and device/online-update validation are recorded separately.
+
+
+## Consolidated public release channel
+
+The owner requested code and APK builds in this repository. wb.16 and later check `huhao0208/aerial-workbench/releases/latest/download/update.json`; package, signer, SHA-256, flavor and repository allowlist checks remain. wb.15 and older only trust the old APK-only repository, so that repository must retain a matching wb.16 migration manifest and APKs under its own URLs. Do not delete/rename it before old clients migrate. Public CI still produces unsigned candidates; signed standard/guard APKs, checksums and complete notices are published in Releases with no private signing materials in Git or CI. Firmware/owner data stay outside this fork.
+
+wb.15 device follow-up: the owner completed a real GitHub online update to code 59. Home brightness / low-blue read 1 / 1. Its Root helper remained alive beyond 70 seconds without closed-menu polling; system Dream backgrounding removed it. Natural system Dream video also read brightness / low-blue 1 / 1, matching Home. The driver sysfs counters stayed 76 / 255 in both scenes; those counters are not a percentage or a physical light measurement. No preference rewrite was used. Migration update results are recorded separately.

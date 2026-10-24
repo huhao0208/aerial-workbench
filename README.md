@@ -2,7 +2,13 @@
 
 基于 [pengchujin/aerial-tv](https://github.com/pengchujin/aerial-tv) 的独立 fork，保留上游 Git 历史和版权声明。维护者的主题、TCL 原生亮度/低蓝光、SDR 屏保、购物键桥接及 GitHub 更新适配在此维护。
 
-[上游原始说明](README.upstream.md) · [第三方声明](NOTICE.md) · [变更与验证边界](WORKBENCH.md) · [固件在线选配](https://huhao0208.github.io/tcl-firmware-builder/) · [已签名发行通道](https://github.com/huhao0208/aerial-workbench-releases)
+[上游原始说明](README.upstream.md) · [第三方声明](NOTICE.md) · [变更与验证边界](WORKBENCH.md) · [固件在线选配](https://huhao0208.github.io/tcl-firmware-builder/) · [正式 APK 下载与更新](https://github.com/huhao0208/aerial-workbench/releases/latest)
+
+## 安装与更新
+
+正式签名 APK、版本说明、SHA256SUMS 与许可文件统一放在[本仓库 Releases](https://github.com/huhao0208/aerial-workbench/releases)。`standard` 包可作为默认桌面；`guard` 包不声明 HOME，更新时保持原安装类型。已安装版通过桌面“软件更新”下载、校验并安装。
+
+wb.16 起更新地址也指向本仓库。wb.15 及更旧版本从原 APK 发行仓库获取一次 wb.16 迁移更新，升级后自动使用新地址；旧仓库保留兼容入口，不再作为日常发行位置。现有 Root 配置、壁纸、布局和快捷键保留。
 
 ## 来源与协议
 

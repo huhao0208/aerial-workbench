@@ -10,7 +10,7 @@ data class WorkbenchRelease(val code: Long, val name: String, val assets: Map<St
     data class Asset(val url: String, val sha256: String, val size: Long)
 
     companion object {
-        const val REPO = "huhao0208/aerial-workbench-releases"
+        const val REPO = "huhao0208/aerial-workbench"
         const val PAGE = "https://github.com/$REPO/releases/latest"
         const val MANIFEST = "$PAGE/download/update.json"
         const val MAX_APK = 64L * 1024 * 1024
