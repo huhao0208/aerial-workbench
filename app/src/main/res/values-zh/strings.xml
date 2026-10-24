@@ -260,4 +260,11 @@
     <string name="wb_update_install_failed">安装未完成。请重试；若仍失败，请检查桌面的 Root 权限。</string>
     <string name="wb_update_download_failed">下载失败，请检查网络后重试。</string>
     <string name="cc_picture_reading">正在读取…</string>
+    <string name="cc_clean_title">后台应用</string>
+    <string name="cc_clean_body">用 Root 停止选中的应用以释放内存。名单为空即关闭;应用不会被卸载。</string>
+    <string name="cc_clean_now">立即清理</string>
+    <string name="cc_clean_auto">回到桌面时自动清理</string>
+    <string name="cc_clean_done">已清理 %1$d 个应用</string>
+    <string name="cc_clean_none">还没有选择要清理的应用</string>
+    <string name="cc_clean_failed">清理失败,Root 可能不可用</string>
 </resources>

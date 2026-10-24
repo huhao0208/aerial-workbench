@@ -253,4 +253,11 @@
     <string name="wb_update_install_failed">Встановлення не завершено. Повторіть спробу та перевірте Root-доступ робочого столу.</string>
     <string name="wb_update_download_failed">Помилка завантаження. Перевірте з’єднання та повторіть спробу.</string>
     <string name="cc_picture_reading">Зчитування…</string>
+    <string name="cc_clean_title">Фонові застосунки</string>
+    <string name="cc_clean_body">Зупиняє обрані фонові застосунки через Root, звільняючи памʼять. Поки список порожній — вимкнено; застосунки не видаляються.</string>
+    <string name="cc_clean_now">Зупинити зараз</string>
+    <string name="cc_clean_auto">Зупиняти під час повернення на головний екран</string>
+    <string name="cc_clean_done">Зупинено застосунків: %1$d</string>
+    <string name="cc_clean_none">Поки нічого не обрано</string>
+    <string name="cc_clean_failed">Не вдалося зупинити; Root може бути недоступний</string>
 </resources>

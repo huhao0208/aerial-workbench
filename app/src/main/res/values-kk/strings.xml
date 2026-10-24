@@ -253,4 +253,11 @@
     <string name="wb_update_install_failed">Орнату аяқталмады. Қайталап көріңіз және жұмыс үстелінің Root рұқсатын тексеріңіз.</string>
     <string name="wb_update_download_failed">Жүктеу орындалмады. Желіні тексеріп, қайталап көріңіз.</string>
     <string name="cc_picture_reading">Оқылуда…</string>
+    <string name="cc_clean_title">Фондық қосымшалар</string>
+    <string name="cc_clean_body">Таңдалған фондық қосымшаларды Root арқылы тоқтатып, жад босатады. Тізім бос болса — өшірулі; қосымшалар жойылмайды.</string>
+    <string name="cc_clean_now">Қазір тоқтату</string>
+    <string name="cc_clean_auto">Басты экранқа оралғанда тоқтату</string>
+    <string name="cc_clean_done">Тоқтатылған қосымшалар: %1$d</string>
+    <string name="cc_clean_none">Әзірше ешнәрсе таңдалмаған</string>
+    <string name="cc_clean_failed">Тоқтату мүмкін болмады; Root қолжетімсіз болуы мүмкін</string>
 </resources>

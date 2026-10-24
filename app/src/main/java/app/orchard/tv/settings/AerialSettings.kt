@@ -127,6 +127,15 @@ object AerialSettings {
     var aerialQuality by mutableStateOf(AerialQuality.Auto); private set
     private const val DEFAULT_SCREENSAVER_MINUTES = 5
 
+    /**
+     * Apps Root-stopped from Control Center, and on returning to Home when [backgroundCleanAuto]:
+     * this TV's memory is small and its video apps outlive their use. Empty list means off.
+     */
+    var backgroundCleanPackages by mutableStateOf<Set<String>>(emptySet()); private set
+
+    /** Also stop [backgroundCleanPackages] automatically whenever Home returns from an app. */
+    var backgroundCleanAuto by mutableStateOf(false); private set
+
     fun init(context: Context) {
         if (started) return
         started = true
@@ -151,6 +160,8 @@ object AerialSettings {
         backStartsScreensaver = prefs.getBoolean("back_starts_screensaver", true)
         screensaverMinutes = prefs.getInt("screensaver_minutes", DEFAULT_SCREENSAVER_MINUTES)
         aerialQuality = AerialQuality.of(prefs.getString("aerial_quality", null))
+        backgroundCleanPackages = prefs.getStringSet("background_clean_packages", null) ?: emptySet()
+        backgroundCleanAuto = prefs.getBoolean("background_clean_auto", false)
     }
 
     /** Theme and layout are committed together by ThemeStore, then exposed in one UI turn. */
@@ -248,6 +259,16 @@ object AerialSettings {
     fun setPinned(inputId: String, pinned: Boolean) {
         pinnedSources = if (pinned) pinnedSources + inputId else pinnedSources - inputId
         app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putStringSet("pinned_sources", pinnedSources) }
+    }
+
+    fun setBackgroundCleanPackage(pkg: String, listed: Boolean) {
+        backgroundCleanPackages = if (listed) backgroundCleanPackages + pkg else backgroundCleanPackages - pkg
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putStringSet("background_clean_packages", backgroundCleanPackages) }
+    }
+
+    fun chooseBackgroundCleanAuto(on: Boolean) {
+        backgroundCleanAuto = on
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("background_clean_auto", on) }
     }
 
 

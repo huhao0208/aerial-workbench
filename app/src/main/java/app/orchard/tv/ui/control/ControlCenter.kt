@@ -1,5 +1,6 @@
 package app.orchard.tv.ui.control
 
+import android.widget.Toast
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.heightIn
@@ -74,8 +75,10 @@ import app.orchard.tv.BuildConfig
 import app.orchard.tv.HomeViewModel
 import app.orchard.tv.Overlay
 import app.orchard.tv.R
+import app.orchard.tv.apps.AppCatalog
 import app.orchard.tv.apps.SourceLooks
 import app.orchard.tv.settings.AerialSettings
+import app.orchard.tv.system.BackgroundCleaner
 import app.orchard.tv.system.HomeStatus
 import app.orchard.tv.system.LaunchFallback
 import app.orchard.tv.system.NetKind
@@ -116,7 +119,7 @@ fun ControlCenter(
             CcPage.Main -> onClose()
             CcPage.Inputs -> vm.overlay = Overlay.ControlCenter(CcPage.Main)
             CcPage.InputSettings -> vm.overlay = Overlay.ControlCenter(CcPage.Inputs)
-            CcPage.Update, CcPage.Setup -> vm.overlay = Overlay.ControlCenter(CcPage.Main)
+            CcPage.Update, CcPage.Setup, CcPage.BackgroundClean -> vm.overlay = Overlay.ControlCenter(CcPage.Main)
         }
     }
 
@@ -166,6 +169,7 @@ fun ControlCenter(
                         CcPage.InputSettings -> InputSettingsPage(vm, visible)
                         CcPage.Update -> UpdatePage(vm, visible)
                         CcPage.Setup -> SetupPage(vm, visible, onOpen)
+                        CcPage.BackgroundClean -> BackgroundCleanPage(vm, visible)
                     }
                 }
             }
@@ -265,6 +269,13 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
                 trailing = "$name ›",
             )
         }
+        // Small-RAM TVs: stop chosen background apps from Home, by hand or on the way back.
+        MenuRow(
+            Glyph.Trash,
+            stringResource(R.string.cc_clean_title),
+            onClick = { vm.overlay = Overlay.ControlCenter(CcPage.BackgroundClean) },
+            trailing = "›",
+        )
         if (BuildConfig.WORKBENCH) {
             MenuRow(Glyph.Info, Updates.available?.let { stringResource(R.string.cc_update_available, it) }
                 ?: stringResource(R.string.wb_update_title),
@@ -290,6 +301,47 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
             Spacer(Modifier.width(8.dp))
             BasicText(text, style = Type.Caption, modifier = Modifier.weight(1f))
             BasicText("Aerial ${Updates.current}", style = Type.Caption.copy(color = Palette.TertiaryLabel), modifier = Modifier.padding(end = 14.dp))
+        }
+    }
+}
+
+/** Small-RAM TVs: which background apps Root stops, by hand or when Home returns from an app. */
+@Composable
+private fun BackgroundCleanPage(vm: HomeViewModel, takeFocus: Boolean) {
+    val context = LocalContext.current
+    val first = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        if (!takeFocus) return@LaunchedEffect
+        withFrameNanos { }
+        runCatching { first.requestFocus() }
+    }
+    // Launcher-less packages never show on Home, so the bridge and Aerial itself are already out.
+    val apps = remember { AppCatalog.loaded.filter { it.packageName != context.packageName } }
+    var busy by remember { mutableStateOf(false) }
+    Column(Modifier.heightIn(max = 470.dp).verticalScroll(rememberScrollState())) {
+        MenuRow(Glyph.ChevronLeft, stringResource(R.string.cc_clean_title), focusRequester = first, onClick = { vm.overlay = Overlay.ControlCenter(CcPage.Main) })
+        BasicText(stringResource(R.string.cc_clean_body), style = Type.Caption, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp))
+        MenuRow(Glyph.Trash, stringResource(R.string.cc_clean_now), onClick = {
+            if (busy) return@MenuRow
+            busy = true
+            BackgroundCleaner.cleanNow(context) { stopped ->
+                busy = false
+                Toast.makeText(context, context.getString(
+                    when {
+                        stopped > 0 -> R.string.cc_clean_done
+                        stopped == 0 -> R.string.cc_clean_none
+                        else -> R.string.cc_clean_failed
+                    }, maxOf(stopped, 0)), Toast.LENGTH_SHORT).show()
+            }
+        }, trailing = if (busy) "…" else null)
+        MenuRow(Glyph.Check, stringResource(R.string.cc_clean_auto),
+            onClick = { AerialSettings.chooseBackgroundCleanAuto(!AerialSettings.backgroundCleanAuto) },
+            trailing = if (AerialSettings.backgroundCleanAuto) "✓" else null)
+        apps.forEach { app ->
+            val listed = app.packageName in AerialSettings.backgroundCleanPackages
+            MenuRow(Glyph.Play, app.label,
+                onClick = { AerialSettings.setBackgroundCleanPackage(app.packageName, !listed) },
+                trailing = if (listed) "✓" else null)
         }
     }
 }

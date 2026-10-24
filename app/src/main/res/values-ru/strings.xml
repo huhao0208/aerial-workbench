@@ -253,4 +253,11 @@
     <string name="wb_update_install_failed">Установка не завершена. Повторите попытку и проверьте Root-доступ рабочего стола.</string>
     <string name="wb_update_download_failed">Ошибка загрузки. Проверьте соединение и повторите попытку.</string>
     <string name="cc_picture_reading">Чтение…</string>
+    <string name="cc_clean_title">Фоновые приложения</string>
+    <string name="cc_clean_body">Останавливает выбранные фоновые приложения через Root, освобождая память. Пока список пуст — выключено; приложения не удаляются.</string>
+    <string name="cc_clean_now">Остановить сейчас</string>
+    <string name="cc_clean_auto">Останавливать при возврате на главный экран</string>
+    <string name="cc_clean_done">Остановлено приложений: %1$d</string>
+    <string name="cc_clean_none">Пока ничего не выбрано</string>
+    <string name="cc_clean_failed">Не удалось остановить; Root может быть недоступен</string>
 </resources>

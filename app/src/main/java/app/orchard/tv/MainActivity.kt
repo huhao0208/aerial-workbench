@@ -507,11 +507,18 @@ class MainActivity : ComponentActivity() {
         vm.refreshSystem()
         // Back in front by any route (Home was handled in onNewIntent, which runs first; Back from
         // the app lands here directly), so the next Home press is a Home-on-Home again.
+        if (openedAppSinceHome) app.orchard.tv.system.BackgroundCleaner.onReturnedFromApp(this)
         openedAppSinceHome = false
         LaunchFallback.next()?.let {
             DiagLog.i("the page just opened closed at once; opening ${it.component ?: it.action}")
             open(it)
         }
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        // Hidden behind a full-screen app no tile shows: let the decoded art go, the disk cache redraws it.
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) app.orchard.tv.apps.AppCatalog.trimMemory()
     }
 
     override fun onPause() {
