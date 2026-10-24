@@ -99,6 +99,9 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     private var loadJob: Job? = null
     private var brightnessJob: Job? = null
+    private var rootPreparationRequested = false
+    private var panelRefreshJob: Job? = null
+    private var panelRevision = 0L
 
     init {
         reload()
@@ -285,6 +288,27 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Called only after Home has drawn and resumed, never from the constructor or boot receiver. */
+    fun prepareRootControls() {
+        if (rootPreparationRequested || !TclRootBacklight.enabled(context)) return
+        rootPreparationRequested = true
+        viewModelScope.launch {
+            DiagLog.i("root picture preparation started after Home frame")
+            val panel = TclRootBacklight.prepare(context)
+            if (panel == null) {
+                DiagLog.i("root picture preparation unavailable")
+                return@launch
+            }
+            DiagLog.i("root picture preparation ready")
+            val native = withContext(Dispatchers.IO) { Brightness.level(context) }
+            // The open panel owns live refresh and edits; a startup result must not replace them.
+            if (overlay !is Overlay.ControlCenter && brightnessJob?.isActive != true && TclRootBacklight.enabled(context)) {
+                brightness = native ?: panel.brightness
+                lowBlueMode = panel.lowBlue
+            }
+        }
+    }
+
     /**
      * What Control Center shows that changes while it is open with nothing to tell us: whether Home
      * Guard is bound (it binds a few seconds after Aerial starts, and the panel kept showing "not the
@@ -293,13 +317,16 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
      * input list is not rebuilt here. Assigning equal values redraws nothing.
      */
     fun refreshPanel() {
-        viewModelScope.launch {
+        if (panelRefreshJob?.isActive == true || brightnessJob?.isActive == true) return
+        val revision = panelRevision
+        panelRefreshJob = viewModelScope.launch {
             val ctx = context
             val (home, level, eye) = withContext(Dispatchers.IO) {
                 val native = Brightness.level(ctx)
                 val panel = if (TclRootBacklight.enabled(ctx)) TclRootBacklight.panel(ctx) else null
                 Triple(SystemProbe.homeStatus(ctx), native ?: panel?.brightness, panel?.lowBlue)
             }
+            if (revision != panelRevision || overlay !is Overlay.ControlCenter || brightnessJob?.isActive == true) return@launch
             homeStatus = home
             brightness = level
             lowBlueMode = eye
@@ -315,6 +342,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     fun adjustBrightness(direction: Int) {
         if (brightnessJob?.isActive == true) return
+        panelRevision++
         brightnessJob = viewModelScope.launch {
             val level = withContext(Dispatchers.IO) {
                 if (Brightness.level(context) != null) Brightness.adjust(context, direction)
@@ -332,6 +360,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             android.widget.Toast.makeText(context, R.string.cc_eye_blocked, android.widget.Toast.LENGTH_LONG).show()
             return
         }
+        panelRevision++
         brightnessJob = viewModelScope.launch {
             val state = TclRootBacklight.setLowBlue(context, current != 1)
             if (state != null) {
@@ -341,6 +370,9 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun releasePanelBrightness() {
+        panelRevision++
+        panelRefreshJob?.cancel()
+        panelRefreshJob = null
         TclRootBacklight.panelActive(false)
         brightnessJob?.cancel()
         viewModelScope.launch { TclRootBacklight.close() }

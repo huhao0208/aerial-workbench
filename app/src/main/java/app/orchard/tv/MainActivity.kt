@@ -71,6 +71,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 class MainActivity : ComponentActivity() {
 
     private val vm by viewModels<HomeViewModel>()
+    private var firstHomeFrameDrawn = false
 
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) = vm.reload()
@@ -164,6 +165,8 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        prepareRootAfterFirstFrame()
+
         ContextCompat.registerReceiver(this, screenOnReceiver, IntentFilter(Intent.ACTION_SCREEN_ON), ContextCompat.RECEIVER_NOT_EXPORTED)
         // Control Center shows things that change while it is open (Home Guard binds a few seconds
         // after Aerial starts): look again every few seconds, only while it is open and Aerial is on screen.
@@ -185,6 +188,22 @@ class MainActivity : ComponentActivity() {
         }
         if (savedInstanceState == null && firstStartSinceBoot()) openBootSource("boot")
         if (intent.getBooleanExtra(EXTRA_WOKE, false)) openBootSource("brought back on wake")
+    }
+
+    private fun prepareRootAfterFirstFrame() {
+        val view = window.decorView
+        view.viewTreeObserver.addOnDrawListener(object : ViewTreeObserver.OnDrawListener {
+            private var posted = false
+            override fun onDraw() {
+                if (posted) return
+                posted = true
+                view.post {
+                    if (view.viewTreeObserver.isAlive) view.viewTreeObserver.removeOnDrawListener(this)
+                    firstHomeFrameDrawn = true
+                    if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) vm.prepareRootControls()
+                }
+            }
+        })
     }
 
     override fun onDestroy() {
@@ -474,6 +493,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         vm.resumed = true
+        if (firstHomeFrameDrawn) vm.prepareRootControls()
         DiagLog.i("onResume; screensaver after ${idleBeforeScreensaver() / 1000} s")
         restartIdleTimer()
         GuardSetup.setHomeInFront(this, true)
